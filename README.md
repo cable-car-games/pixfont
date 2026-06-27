@@ -24,6 +24,10 @@ Goals:
   - [ ] BMFont (PNG atlas)
   - [ ] TrueType
 
+Known issues:
+
+- [ ] Tab navigation (not implicit in iced yet)
+
 ## Build from source
 
 This project is nowhere near ready for use, but you can build the latest and greatest by installing Rust, and firing a few commands.

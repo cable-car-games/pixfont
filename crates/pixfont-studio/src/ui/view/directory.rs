@@ -4,17 +4,18 @@
 use std::fmt::Display;
 
 use iced::{
-    Element, Length, Task,
-    widget::{
-        Button, Column, Container, PickList, Row, Scrollable, TextInput, pane_grid::Axis::Vertical,
-    },
+    Element, Font, Length, Task,
+    widget::{Button, Column, Container, PickList, Row, Scrollable, Text, TextInput},
 };
+use iced_aw::{DropDown, drop_down::Alignment};
 
-use crate::ui::widgets::icon::Icon;
+use crate::ui::widgets::{icon::Icon, inspector};
 
 pub struct Directory {
     filter: Option<String>,
     order: DirectoryOrder,
+
+    set_dropdown_shown: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -47,6 +48,25 @@ pub enum Message {
     SetFilter(String),
     SetOrder(DirectoryOrder),
 
+    SetDropdown(Option<bool>),
+    ToggleExtra,
+
+    // metadata update messages
+    SetName(String),
+    SetFamily(Option<String>),
+    SetWeight(Option<String>),
+    SetStyle(Option<String>),
+    SetAuthor(Option<String>),
+    SetCopyright(Option<String>),
+    SetLicense(Option<String>),
+    AddNewExtra,
+    SetExtraKey(String, String),
+    SetExtraValue(String, String),
+    RemoveExtra(String),
+
+    // glyph management
+    AddGlyphsFromSet(pixfont::sets::GlyphSet),
+
     Noop,
 }
 
@@ -55,17 +75,138 @@ impl Directory {
         Self {
             filter: None,
             order: DirectoryOrder::None,
+            set_dropdown_shown: false,
         }
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
+    pub fn view<'state>(&'state self, font: &'state pixfont::Font) -> Element<'state, Message> {
         let orders = [
             DirectoryOrder::None,
             DirectoryOrder::Name,
             DirectoryOrder::Unicode,
         ];
 
-        let inspector = Column::new().push("Sidebar").width(320);
+        let inspector = Column::new()
+            .push(
+                inspector::section("Metadata")
+                    .push(inspector::property(
+                        "Name",
+                        TextInput::new("Pixel Sans", &font.metadata.name)
+                            .on_input(Message::SetName),
+                    ))
+                    .push(inspector::property(
+                        "Family",
+                        TextInput::new("Pixel Sans", font.metadata.family.as_deref().unwrap_or(""))
+                            .on_input(|s| {
+                                Message::SetFamily(if s.is_empty() { None } else { Some(s) })
+                            }),
+                    ))
+                    .push(inspector::property(
+                        "Weight",
+                        TextInput::new("Regular", font.metadata.weight.as_deref().unwrap_or(""))
+                            .on_input(|s| {
+                                Message::SetWeight(if s.is_empty() { None } else { Some(s) })
+                            }),
+                    ))
+                    .push(inspector::property(
+                        "Style",
+                        TextInput::new("Roman", font.metadata.style.as_deref().unwrap_or(""))
+                            .on_input(|s| {
+                                Message::SetStyle(if s.is_empty() { None } else { Some(s) })
+                            }),
+                    ))
+                    .push(inspector::property(
+                        "Author",
+                        TextInput::new("Jane Doe", font.metadata.author.as_deref().unwrap_or(""))
+                            .on_input(|s| {
+                                Message::SetAuthor(if s.is_empty() { None } else { Some(s) })
+                            }),
+                    ))
+                    .push(inspector::property(
+                        "Copyright",
+                        TextInput::new(
+                            "2026 Jane Doe",
+                            font.metadata.copyright.as_deref().unwrap_or(""),
+                        )
+                        .on_input(|s| {
+                            Message::SetCopyright(if s.is_empty() { None } else { Some(s) })
+                        }),
+                    ))
+                    .push(inspector::property(
+                        "Licence",
+                        TextInput::new(
+                            "SIL OFL 1.1",
+                            font.metadata.license.as_deref().unwrap_or(""),
+                        )
+                        .on_input(|s| {
+                            Message::SetLicense(if s.is_empty() { None } else { Some(s) })
+                        }),
+                    )),
+            )
+            .push(
+                inspector::section("Extra")
+                    .push(
+                        Button::new("Add extra data")
+                            .style(iced::widget::button::subtle)
+                            .on_press(Message::AddNewExtra),
+                    )
+                    .push(
+                        Column::from_iter(font.metadata.extra.iter().map(|(key, value)| {
+                            let old_key = key.clone();
+                            Row::new()
+                                .spacing(2)
+                                .push(
+                                    TextInput::new("(key)", &old_key)
+                                        .width(inspector::LABEL_WIDTH)
+                                        .on_input(move |value| {
+                                            Message::SetExtraKey(old_key.clone(), value)
+                                        }),
+                                )
+                                .push(TextInput::new("(value)", value).on_input(|value| {
+                                    Message::SetExtraValue(key.to_string(), value)
+                                }))
+                                .push(
+                                    Button::new("×")
+                                        .style(iced::widget::button::danger)
+                                        .on_press(Message::RemoveExtra(key.to_string())),
+                                )
+                                .into()
+                        }))
+                        .spacing(2),
+                    ),
+            )
+            .width(320)
+            .spacing(8);
+
+        let new_set_dropdown = DropDown::new(
+            Button::new(
+                Row::new()
+                    .push(Icon::BiPlusLg.as_svg())
+                    .push("New from set")
+                    .spacing(4),
+            )
+            .style(if self.set_dropdown_shown {
+                iced::widget::button::primary
+            } else {
+                iced::widget::button::subtle
+            })
+            .on_press(Message::SetDropdown(None)),
+            Container::new(Column::with_children(
+                pixfont::sets::DEFINED_GLYPH_SETS.iter().map(|set| {
+                    Button::new(Text::new(format!("{}", set)))
+                        .style(iced::widget::button::text)
+                        .width(240)
+                        .on_press(Message::AddGlyphsFromSet(*set))
+                        .into()
+                }),
+            ))
+            .style(iced::widget::container::bordered_box),
+            self.set_dropdown_shown,
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .alignment(Alignment::Bottom)
+        .on_dismiss(Message::SetDropdown(Some(false)));
 
         let toolbar = Row::new()
             .push(
@@ -80,16 +221,7 @@ impl Directory {
                         .style(iced::widget::button::subtle)
                         .on_press(Message::Noop),
                     )
-                    .push(
-                        Button::new(
-                            Row::new()
-                                .push(Icon::BiPlusLg.as_svg())
-                                .push("New from set")
-                                .spacing(4),
-                        )
-                        .style(iced::widget::button::subtle)
-                        .on_press(Message::Noop),
-                    )
+                    .push(new_set_dropdown)
                     .spacing(2),
             )
             .push(
@@ -100,7 +232,7 @@ impl Directory {
                                 "Search",
                                 self.filter.clone().unwrap_or(String::new()).as_str(),
                             )
-                            .on_input(|s| Message::SetFilter(s))
+                            .on_input(Message::SetFilter)
                             .width(140),
                         )
                         .push(PickList::new(orders, Some(self.order), |order| {
@@ -126,6 +258,7 @@ impl Directory {
                 )
                 .style(iced::widget::container::bordered_box),
             )
+            .spacing(8)
             .into()
     }
 
@@ -142,6 +275,10 @@ impl Directory {
             }
             Message::SetOrder(order) => {
                 self.order = order;
+                Task::none()
+            }
+            Message::SetDropdown(show) => {
+                self.set_dropdown_shown = show.unwrap_or(!self.set_dropdown_shown);
                 Task::none()
             }
             _ => todo!(),

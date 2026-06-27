@@ -5,7 +5,7 @@ use std::fmt::Display;
 
 use iced::{
     Element, Length,
-    widget::{Button, Column, Container, Row, Svg, Text, canvas::LineCap::Butt},
+    widget::{Button, Column, Container, Row, Text},
 };
 use iced_aw::{DropDown, drop_down::Alignment};
 

@@ -6,6 +6,8 @@ use std::{
     collections::HashMap,
 };
 
+pub mod sets;
+
 #[cfg(test)]
 mod tests;
 
@@ -27,10 +29,34 @@ pub struct Font {
     pub glyphs: HashMap<String, Glyph>,
 }
 
+impl Font {
+    pub fn add_glyphs(&mut self, glyphs: &mut impl Iterator<Item = (String, Glyph)>) -> &mut Self {
+        for (name, glyph) in glyphs {
+            self.glyphs.insert(name, glyph);
+        }
+
+        self
+    }
+
+    pub fn add_glyphs_and_mappings(
+        &mut self,
+        glyph_mappings: &mut impl Iterator<Item = (String, u32, Glyph)>,
+    ) -> &mut Self {
+        for (name, codepoint, glyph) in glyph_mappings {
+            self.mappings
+                .insert(codepoint, CodepointMapping::new(&name));
+            self.glyphs.insert(name, glyph);
+        }
+
+        self
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct Metadata {
     pub name: String,
     pub family: Option<String>,
+    pub weight: Option<String>,
     pub style: Option<String>,
     pub author: Option<String>,
     pub copyright: Option<String>,
@@ -72,6 +98,15 @@ pub struct CodepointMapping {
     pub alternate: HashMap<String, String>,
 }
 
+impl CodepointMapping {
+    pub fn new(glyph: &str) -> Self {
+        Self {
+            glyph: glyph.into(),
+            alternate: HashMap::new(),
+        }
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct Glyph {
     pub pixels: Pixels,
@@ -84,10 +119,6 @@ pub struct Glyph {
 
     /// Additional information for exporters.
     pub extra: HashMap<String, String>,
-}
-
-impl Glyph {
-    pub fn new() {}
 }
 
 #[derive(Clone, Default)]
