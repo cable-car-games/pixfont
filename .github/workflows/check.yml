@@ -1,0 +1,32 @@
+name: Check
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Canary
+        run: |
+          ! grep -R 'FIXME(AIGEN)'   --exclude AGENTS.md --exclude CLAUDE.md
+          ! grep -R 'SPDX-.\+\[AI\]' --exclude AGENTS.md --exclude CLAUDE.md
+
+      - name: Install dependencies
+        run: sudo apt-get install -y libx11-dev libxkbcommon-dev libxrandr-dev
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo fmt --check
+      - run: cargo clippy
+      - run: cargo test --verbose

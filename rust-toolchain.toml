@@ -1,6 +1,7 @@
 [toolchain]
 channel = "stable"
-profile = "complete"
+profile = "default"
+components = ["rustfmt", "clippy"]
 targets = [
     # windows
     "i686-pc-windows-msvc",
