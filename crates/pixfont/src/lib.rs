@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
-use std::{
-    cmp::{max, min},
-    collections::HashMap,
-};
+use std::cmp::{max, min};
+
+use glifnames::AGLFN;
+use glifnames::GlyphName;
+use indexmap::IndexMap;
 
 pub mod sets;
 
@@ -20,13 +21,13 @@ pub struct Font {
     pub metrics: Metrics,
 
     /// Names and descriptions of alternate mappings.
-    pub alternates: HashMap<String, String>,
+    pub alternates: IndexMap<String, String>,
 
     /// Unicode codepoint to character name mappings.
-    pub mappings: HashMap<u32, CodepointMapping>,
+    pub mappings: IndexMap<u32, CodepointMapping>,
 
     /// Glpyhs.
-    pub glyphs: HashMap<String, Glyph>,
+    pub glyphs: IndexMap<String, Glyph>,
 }
 
 impl Font {
@@ -50,6 +51,34 @@ impl Font {
 
         self
     }
+
+    pub fn add_codepoints(&mut self, codepoints: &mut impl Iterator<Item = u32>) -> &mut Self {
+        self.add_glyphs_and_mappings(&mut codepoints.map(|codepoint| {
+            (
+                AGLFN::glyph_name(codepoint).into(),
+                codepoint,
+                Glyph::default(),
+            )
+        }))
+    }
+
+    pub fn get_glyph_codepoint(&self, glyph_name: &str) -> Option<(u32, Option<&String>)> {
+        // FIXME: horrible way to do this, something to optimise later
+
+        self.mappings.iter().find_map(|(codepoint, mapping)| {
+            if mapping.glyph == glyph_name {
+                return Some((*codepoint, None));
+            }
+
+            for (alternate, glyph) in &mapping.alternate {
+                if glyph == glyph_name {
+                    return Some((*codepoint, Some(alternate)));
+                }
+            }
+
+            None
+        })
+    }
 }
 
 #[derive(Clone, Default)]
@@ -61,7 +90,7 @@ pub struct Metadata {
     pub author: Option<String>,
     pub copyright: Option<String>,
     pub license: Option<String>,
-    pub extra: HashMap<String, String>,
+    pub extra: IndexMap<String, String>,
 }
 
 #[derive(Clone, Default)]
@@ -95,14 +124,14 @@ pub struct CodepointMapping {
     pub glyph: String,
 
     /// Alternative glyph for this mapping.
-    pub alternate: HashMap<String, String>,
+    pub alternate: IndexMap<String, String>,
 }
 
 impl CodepointMapping {
     pub fn new(glyph: &str) -> Self {
         Self {
             glyph: glyph.into(),
-            alternate: HashMap::new(),
+            alternate: Default::default(),
         }
     }
 }
@@ -118,7 +147,7 @@ pub struct Glyph {
     pub guideline: Guidelines,
 
     /// Additional information for exporters.
-    pub extra: HashMap<String, String>,
+    pub extra: IndexMap<String, String>,
 }
 
 #[derive(Clone, Default)]

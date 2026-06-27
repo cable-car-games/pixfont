@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
-use std::fmt::Display;
+use std::{fmt::Display, ops::Deref};
 
 use iced::{
-    Element, Font, Length, Task,
-    widget::{Button, Column, Container, PickList, Row, Scrollable, Text, TextInput},
+    Element, Length, Task,
+    widget::{Button, Column, Container, Grid, PickList, Row, Scrollable, Text, TextInput},
 };
 use iced_aw::{DropDown, drop_down::Alignment};
 
@@ -79,7 +79,74 @@ impl Directory {
         }
     }
 
-    pub fn view<'state>(&'state self, font: &'state pixfont::Font) -> Element<'state, Message> {
+    fn glyphs<'state>(
+        &'state self,
+        font: &'state pixfont::Font,
+        selected_glyph: &'state Option<String>,
+    ) -> Element<'state, Message> {
+        let glyphs: Vec<(&'state String, &'state pixfont::Glyph)> = match self.order {
+            DirectoryOrder::None => font.glyphs.iter().collect(),
+            DirectoryOrder::Name => {
+                let mut pairs: Vec<_> = font.glyphs.iter().collect();
+                pairs.sort_by_key(|(name, _)| *name);
+                pairs
+            }
+            DirectoryOrder::Unicode => {
+                let mut codepoints: Vec<u32> = font.mappings.keys().copied().collect();
+                codepoints.sort();
+                codepoints
+                    .iter()
+                    .flat_map(|codepoint| {
+                        let mapping = &font.mappings[codepoint];
+                        let mut glyph_names = vec![&mapping.glyph];
+                        glyph_names.extend(mapping.alternate.values());
+                        glyph_names
+                            .iter()
+                            .flat_map(|glyph_name| {
+                                let Some(glyph) = font.glyphs.get(*glyph_name) else {
+                                    println!("glyph does not exist! {}", glyph_name);
+                                    return None;
+                                };
+
+                                Some((*glyph_name, glyph))
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .collect()
+            }
+        };
+
+        Container::new(
+            Grid::with_children(glyphs.iter().map(|(name, _glyph)| {
+                let name = *name;
+                let _glyph = *_glyph;
+
+                // TODO: glyph preview and mappings
+                Button::new(name.deref())
+                    .style(
+                        if let Some(selected_glyph) = selected_glyph
+                            && *selected_glyph == **name
+                        {
+                            iced::widget::button::primary
+                        } else {
+                            iced::widget::button::background
+                        },
+                    )
+                    .on_press(Message::SelectGlyph(name.to_string()))
+                    .into()
+            }))
+            .fluid(120)
+            .spacing(4),
+        )
+        .padding(4)
+        .into()
+    }
+
+    pub fn view<'state>(
+        &'state self,
+        font: &'state pixfont::Font,
+        selected_glyph: &'state Option<String>,
+    ) -> Element<'state, Message> {
         let orders = [
             DirectoryOrder::None,
             DirectoryOrder::Name,
@@ -146,11 +213,6 @@ impl Directory {
             .push(
                 inspector::section("Extra")
                     .push(
-                        Button::new("Add extra data")
-                            .style(iced::widget::button::subtle)
-                            .on_press(Message::AddNewExtra),
-                    )
-                    .push(
                         Column::from_iter(font.metadata.extra.iter().map(|(key, value)| {
                             let old_key = key.clone();
                             Row::new()
@@ -173,8 +235,17 @@ impl Directory {
                                 .into()
                         }))
                         .spacing(2),
+                    )
+                    .push(
+                        Button::new("Add extra data")
+                            .style(iced::widget::button::subtle)
+                            .on_press(Message::AddNewExtra),
                     ),
             )
+            .push(inspector::section("Glyph").push(inspector::property(
+                "Glyph name",
+                TextInput::new("(not selected)", selected_glyph.as_deref().unwrap_or("")),
+            )))
             .width(320)
             .spacing(8);
 
@@ -244,7 +315,7 @@ impl Directory {
             )
             .padding(4);
 
-        let directory = Column::new();
+        let directory = self.glyphs(font, selected_glyph);
 
         Row::new()
             .push(Scrollable::new(inspector))

@@ -3,7 +3,7 @@
 
 use std::{ffi::OsStr, path::PathBuf};
 
-use iced::{Element, Font, Pixels, Settings, Task, font, keyboard::key, widget::Column};
+use iced::{Element, Font, Pixels, Settings, Task, font, widget::Column};
 
 use crate::ui::{topbar::Topbar, view::directory::Directory};
 
@@ -35,6 +35,8 @@ struct Application {
     dirty: bool,
     project_path: Option<PathBuf>,
     project: pixfont::Font,
+
+    selected_glyph: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +54,7 @@ impl Application {
                 dirty: false,
                 project_path: None,
                 project: Default::default(),
+                selected_glyph: None,
             },
             Task::none(),
         )
@@ -81,9 +84,13 @@ impl Application {
                 ui::topbar::Message::ExportFile(_export_type) => todo!(),
             },
             Message::Directory(message) => match message {
-                ui::view::directory::Message::SelectGlyph(_glyph_name) => todo!(),
-                ui::view::directory::Message::AddGlyphsFromSet(_set) => {
-                    // self.project.add_glyphs(glyphs);
+                ui::view::directory::Message::SelectGlyph(glyph_name) => {
+                    self.selected_glyph = Some(glyph_name);
+                    Task::none()
+                }
+                ui::view::directory::Message::AddGlyphsFromSet(set) => {
+                    self.project
+                        .add_codepoints(&mut set.codepoints().iter().copied());
                     self.directory
                         .update(ui::view::directory::Message::SetDropdown(Some(false)))
                         .map(Message::Directory)
@@ -126,9 +133,14 @@ impl Application {
                     Task::none()
                 }
                 ui::view::directory::Message::SetExtraKey(old, new) => {
-                    if let Some(value) = self.project.metadata.extra.remove(&old) {
-                        self.project.metadata.extra.insert(new, value);
-                    }
+                    // TODO: proper error handling
+                    //       if the keys in this event are missing, it's likely a bug in some other code
+                    self.project
+                        .metadata
+                        .extra
+                        .replace_index(self.project.metadata.extra.get_index_of(&old).unwrap(), new)
+                        .unwrap();
+
                     Task::none()
                 }
                 ui::view::directory::Message::SetExtraValue(key, value) => {
@@ -136,7 +148,7 @@ impl Application {
                     Task::none()
                 }
                 ui::view::directory::Message::RemoveExtra(key) => {
-                    self.project.metadata.extra.remove(&key);
+                    self.project.metadata.extra.shift_remove(&key);
                     Task::none()
                 }
 
@@ -148,7 +160,11 @@ impl Application {
     fn view(&self) -> Element<'_, Message> {
         Column::new()
             .push(self.topbar.view().map(Message::Topbar))
-            .push(self.directory.view(&self.project).map(Message::Directory))
+            .push(
+                self.directory
+                    .view(&self.project, &self.selected_glyph)
+                    .map(Message::Directory),
+            )
             .padding(8)
             .spacing(8)
             .into()
