@@ -8,10 +8,11 @@ use std::hash::Hash;
 use glifnames::AGLFN;
 use glifnames::GlyphName;
 use indexmap::IndexMap;
+use indexmap::map::IntoIter;
 
 pub mod sets;
 
-#[cfg(feature = "import")]
+pub mod export;
 pub mod import;
 
 #[cfg(test)]
@@ -219,6 +220,10 @@ impl Pixels {
 
     pub fn toggle(&mut self, point: Point) -> bool {
         self.set(point, !self.get(point))
+    }
+
+    pub fn pixels(&self) -> impl Iterator<Item = &Point> {
+        self.pixels.iter()
     }
 }
 

@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
-use std::{ffi::OsStr, path::PathBuf};
+use std::{ffi::OsStr, fs::File, path::PathBuf};
 
 use iced::{
     Element, Font, Pixels, Settings, Task, font,
+    wgpu::wgc::error,
     widget::{Column, Text},
 };
+use rfd::AsyncFileDialog;
 
 use crate::ui::{
     topbar::Topbar,
@@ -48,6 +50,9 @@ struct Application {
 
 #[derive(Debug, Clone)]
 enum Message {
+    None,
+    OpenProject(Option<PathBuf>, pixfont::Font),
+
     Topbar(ui::topbar::Message),
     Directory(ui::view::directory::Message),
     Editor(ui::view::editor::Message),
@@ -71,17 +76,83 @@ impl Application {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::None => Task::none(),
+
+            Message::OpenProject(path, font) => {
+                self.dirty = false;
+                self.project = font;
+                self.selected_glyph = None;
+
+                Task::none()
+            }
+
             Message::Topbar(message) => match message {
                 ui::topbar::Message::NewFile => {
                     // TODO: prompt user to confirm if file is dirty
-                    if self.dirty {
-                        todo!()
-                    }
 
-                    todo!()
+                    self.dirty = false;
+                    self.project = pixfont::Font::default();
+                    self.selected_glyph = None;
+
+                    Task::none()
                 }
-                ui::topbar::Message::OpenFile => todo!(),
-                ui::topbar::Message::SaveFile => todo!(),
+                ui::topbar::Message::OpenFile => Task::future(async {
+                    let dialog = AsyncFileDialog::new();
+                    let Some(file) = dialog.pick_file().await else {
+                        return Message::None;
+                    };
+
+                    let font = match pixfont::import::import_from_file(file.path()) {
+                        Ok(font) => font,
+                        Err(error) => {
+                            println!("failed to load file: {}", error);
+                            return Message::None;
+                        }
+                    };
+
+                    Message::OpenProject(Some(file.path().to_owned()), font)
+                }),
+                ui::topbar::Message::SaveFile => {
+                    let font = self.project.clone();
+                    Task::future(async move {
+                        let dialog = AsyncFileDialog::new();
+                        let Some(file) = dialog.save_file().await else {
+                            return Message::None;
+                        };
+
+                        match pixfont::export::export_to_file(
+                            &font,
+                            pixfont::export::Exporter::Project,
+                            file.path(),
+                        ) {
+                            Ok(_) => {}
+                            Err(error) => {
+                                println!("failed to save project: {}", error);
+                            }
+                        }
+                        Message::None
+                    })
+                }
+                ui::topbar::Message::ExportFile(exporter) => {
+                    let font = self.project.clone();
+                    Task::future(async move {
+                        let close_msg =
+                            Message::Topbar(ui::topbar::Message::OpenExportDropdown(Some(false)));
+
+                        let dialog = AsyncFileDialog::new();
+                        let Some(file) = dialog.save_file().await else {
+                            return close_msg;
+                        };
+
+                        match pixfont::export::export_to_file(&font, exporter, file.path()) {
+                            Ok(_) => {}
+                            Err(error) => {
+                                println!("failed to export file: {}", error);
+                            }
+                        };
+                        close_msg
+                    })
+                }
                 ui::topbar::Message::ShowView(view) => {
                     self.topbar.view = view;
                     Task::none()
@@ -90,7 +161,6 @@ impl Application {
                     self.topbar.export_shown = visible.unwrap_or(!self.topbar.export_shown);
                     Task::none()
                 }
-                ui::topbar::Message::ExportFile(_export_type) => todo!(),
             },
             Message::Directory(message) => match message {
                 ui::view::directory::Message::SelectGlyph(glyph_name) => {
@@ -201,6 +271,6 @@ impl Application {
         };
 
         let dirty_mark = if self.dirty { "*" } else { "" };
-        format!("{}{} - {}", dirty_mark, project_name, "PixFont Editor")
+        format!("{}{} - {}", dirty_mark, project_name, "PixFont Studio")
     }
 }

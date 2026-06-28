@@ -8,6 +8,7 @@ use iced::{
     widget::{Button, Column, Container, Row, Text},
 };
 use iced_aw::{DropDown, drop_down::Alignment};
+use pixfont::export::Exporter;
 
 use crate::ui::widgets::icon::Icon;
 
@@ -24,7 +25,7 @@ pub enum Message {
     ShowView(View),
 
     OpenExportDropdown(Option<bool>),
-    ExportFile(ExportType),
+    ExportFile(pixfont::export::Exporter),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -133,19 +134,11 @@ impl Topbar {
                                     })
                                     .on_press(Message::OpenExportDropdown(None)),
                                 Container::new(Column::with_children(
-                                    [
-                                        ExportType::Bdf,
-                                        ExportType::Pcf,
-                                        ExportType::Ttf,
-                                        ExportType::Fon,
-                                        ExportType::Bmf,
-                                        ExportType::Pentacom,
-                                    ]
-                                    .map(|export_type| {
-                                        Button::new(Text::new(format!("{}", export_type)))
+                                    pixfont::export::EXPORTERS.iter().map(|exporter| {
+                                        Button::new(Text::new(format!("{}", exporter)))
                                             .style(iced::widget::button::text)
                                             .width(240)
-                                            .on_press(Message::ExportFile(export_type))
+                                            .on_press(Message::ExportFile(*exporter))
                                             .into()
                                     }),
                                 ))

@@ -3,23 +3,40 @@
 
 use std::cmp::Ordering;
 
-use glam::Vec2;
 use iced::{
-    Color, Element, Length, Rectangle, Size,
+    Color, Element, Length, Point, Rectangle, Size, Vector,
     advanced::{
         Widget, layout,
         renderer::{self, Quad},
     },
+    keyboard::{Key, key},
 };
 
 pub struct GlyphEditor<'state, 'glyph, Message> {
     glyph: &'glyph pixfont::Glyph,
     scale: f32,
-    offset: Vec2,
-    is_panning: bool,
+    offset: Vector<f32>,
 
     on_scale: Option<Box<dyn Fn(f32) -> Message + 'state>>,
-    on_pan: Option<Box<dyn Fn(Vec2) -> Message + 'state>>,
+    on_pan: Option<Box<dyn Fn(Vector<f32>) -> Message + 'state>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Tool {
+    Pen,
+    Line,
+    Rectangle,
+    Fill,
+    Eraser,
+    Pan,
+}
+
+#[derive(Debug, Default)]
+struct State {
+    will_pan: bool,
+    pan_start: Option<Vector<f32>>,
+
+    is_pressed: bool,
 }
 
 impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
@@ -27,8 +44,7 @@ impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
         GlyphEditor {
             glyph,
             scale: 5.0,
-            offset: Vec2::new(0.0, 0.0),
-            is_panning: false,
+            offset: Vector::new(0.0, 0.0),
 
             on_scale: None,
             on_pan: None,
@@ -40,7 +56,7 @@ impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
         self
     }
 
-    pub fn offset(mut self, offset: Vec2) -> Self {
+    pub fn offset(mut self, offset: Vector<f32>) -> Self {
         self.offset = offset;
         self
     }
@@ -50,9 +66,42 @@ impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
         self
     }
 
-    pub fn on_pan(mut self, on_pan: impl Fn(Vec2) -> Message + 'state) -> Self {
+    pub fn on_pan(mut self, on_pan: impl Fn(Vector<f32>) -> Message + 'state) -> Self {
         self.on_pan = Some(Box::new(on_pan));
         self
+    }
+
+    fn to_font_point(&self, point: Option<Point>, bounds: &Rectangle) -> Option<pixfont::Point> {
+        if let Some(point) = point {
+            let center = Vector::new(bounds.center_x(), bounds.center_y());
+            let point =
+                point - Vector::new(-self.scale / 2.0, -self.scale / 2.0) - self.offset - center;
+            let point = Point::new(point.x / self.scale, point.y / self.scale);
+
+            Some(pixfont::Point::new(
+                point.x.floor() as i32,
+                -(point.y.floor()) as i32,
+            ))
+        } else {
+            None
+        }
+    }
+
+    fn to_iced_rect(&self, point: Option<pixfont::Point>, bounds: &Rectangle) -> Option<Rectangle> {
+        if let Some(point) = point {
+            let center = bounds.center();
+            let point = Vector::new(
+                (point.x as f32) * self.scale,
+                (-point.y as f32) * self.scale,
+            );
+
+            let point =
+                center + self.offset + Vector::new(-self.scale / 2.0, -self.scale / 2.0) + point;
+
+            Some(Rectangle::new(point, Size::new(self.scale, self.scale)))
+        } else {
+            None
+        }
     }
 }
 
@@ -64,6 +113,14 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
             width: Length::Fill,
             height: Length::Fill,
         }
+    }
+
+    fn tag(&self) -> iced::advanced::widget::tree::Tag {
+        iced::advanced::widget::tree::Tag::of::<State>()
+    }
+
+    fn state(&self) -> iced::advanced::widget::tree::State {
+        iced::advanced::widget::tree::State::new(State::default())
     }
 
     fn layout(
@@ -85,27 +142,44 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
         cursor: iced::advanced::mouse::Cursor,
         viewport: &iced::Rectangle,
     ) {
-        let layout_bounds = layout.bounds();
+        let bounds = layout.bounds();
 
-        renderer.fill_quad(
-            Quad {
-                bounds: layout_bounds,
-                ..Default::default()
-            },
-            Color::from_rgb8(0xFF, 0, 0xFF),
-        );
+        //renderer.fill_quad(
+        //    Quad {
+        //        bounds: layout_bounds,
+        //        ..Default::default()
+        //    },
+        //    Color::from_rgb8(0xFF, 0, 0xFF),
+        //);
+
+        // pixels
+        for pixel in self.glyph.pixels.pixels() {
+            if let Some(origin) = self.to_iced_rect(Some(*pixel), &bounds) {
+                renderer.fill_quad(
+                    Quad {
+                        bounds: origin,
+                        ..Default::default()
+                    },
+                    Color::WHITE,
+                );
+            }
+        }
 
         // gridlines
-        let mut gx = layout_bounds.x;
-        let mut gy = layout_bounds.y;
-        while gx <= layout_bounds.x + layout_bounds.width {
+        let mut gx = bounds.x + self.offset.x % self.scale + (bounds.width / 2.0) % self.scale
+            - self.scale * 0.5;
+        let mut gy = bounds.y
+            + self.offset.y % self.scale
+            + (bounds.height / 2.0) % (self.scale)
+            + self.scale * 0.5;
+        while gx <= bounds.x + bounds.width {
             renderer.fill_quad(
                 Quad {
                     bounds: Rectangle {
                         x: gx,
-                        y: layout_bounds.y,
+                        y: bounds.y,
                         width: 1.0,
-                        height: layout_bounds.height,
+                        height: bounds.height,
                     },
                     ..Default::default()
                 },
@@ -114,13 +188,13 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
 
             gx += self.scale;
         }
-        while gy <= layout_bounds.y + layout_bounds.height {
+        while gy <= bounds.y + bounds.height {
             renderer.fill_quad(
                 Quad {
                     bounds: Rectangle {
-                        x: layout_bounds.x,
+                        x: bounds.x,
                         y: gy,
-                        width: layout_bounds.width,
+                        width: bounds.width,
                         height: 1.0,
                     },
                     ..Default::default()
@@ -130,6 +204,40 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
 
             gy += self.scale;
         }
+
+        // origin lines
+        renderer.fill_quad(
+            Quad {
+                bounds: Rectangle {
+                    x: f32::clamp(
+                        bounds.center_x() + self.offset.x - self.scale / 2.0,
+                        bounds.x,
+                        bounds.x + bounds.width,
+                    ),
+                    y: bounds.y,
+                    width: 1.0,
+                    height: bounds.height,
+                },
+                ..Default::default()
+            },
+            Color::from_rgb8(0x80, 0x20, 0x20),
+        );
+        renderer.fill_quad(
+            Quad {
+                bounds: Rectangle {
+                    x: bounds.x,
+                    y: f32::clamp(
+                        bounds.center_y() + self.offset.y + self.scale / 2.0,
+                        bounds.y,
+                        bounds.y + bounds.height,
+                    ),
+                    width: bounds.width,
+                    height: 1.0,
+                },
+                ..Default::default()
+            },
+            Color::from_rgb8(0x80, 0x20, 0x20),
+        );
     }
 
     fn mouse_interaction(
@@ -150,32 +258,111 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
             return iced::advanced::mouse::Interaction::None;
         }
 
+        let state = _tree.state.downcast_ref::<State>();
+
+        if state.will_pan {
+            return match state.pan_start {
+                Some(_) => iced::advanced::mouse::Interaction::Grabbing,
+                None => iced::advanced::mouse::Interaction::Grab,
+            };
+        }
+
         iced::advanced::mouse::Interaction::Crosshair
     }
 
     fn update(
         &mut self,
-        _tree: &mut iced::advanced::widget::Tree,
+        tree: &mut iced::advanced::widget::Tree,
         event: &iced::Event,
-        _layout: layout::Layout<'_>,
-        _cursor: iced::advanced::mouse::Cursor,
+        layout: layout::Layout<'_>,
+        cursor: iced::advanced::mouse::Cursor,
         _renderer: &Renderer,
         _clipboard: &mut dyn iced::advanced::Clipboard,
-        _shell: &mut iced::advanced::Shell<'_, Message>,
+        shell: &mut iced::advanced::Shell<'_, Message>,
         _viewport: &Rectangle,
     ) {
-        println!("{:?}", event);
+        //println!("{:?}", event);
         match event {
-            iced::Event::Keyboard(event) => {}
+            iced::Event::Keyboard(event) => match event {
+                iced::keyboard::Event::KeyPressed {
+                    key,
+                    modified_key,
+                    physical_key,
+                    location,
+                    modifiers,
+                    text,
+                    repeat,
+                } => {
+                    let state = tree.state.downcast_mut::<State>();
+
+                    if *key == Key::Named(key::Named::Space) {
+                        state.will_pan = true;
+                    }
+                }
+                iced::keyboard::Event::KeyReleased {
+                    key,
+                    modified_key,
+                    physical_key,
+                    location,
+                    modifiers,
+                } => {
+                    let state = tree.state.downcast_mut::<State>();
+
+                    if *key == Key::Named(key::Named::Space) {
+                        state.will_pan = false;
+                        state.pan_start = None;
+                    }
+                }
+                iced::keyboard::Event::ModifiersChanged(modifiers) => {}
+            },
             iced::Event::Mouse(event) => match event {
                 iced::mouse::Event::CursorEntered => {}
                 iced::mouse::Event::CursorLeft => {}
-                iced::mouse::Event::CursorMoved { position } => {}
+                iced::mouse::Event::CursorMoved { position } => {
+                    let state = tree.state.downcast_mut::<State>();
+
+                    if let Some(last_pan) = state.pan_start
+                        && let Some(on_pan) = &self.on_pan
+                    {
+                        let delta = *position - last_pan;
+                        let delta = Vector::new(delta.x, delta.y);
+                        shell.publish(on_pan(self.offset + delta));
+
+                        state.pan_start = Some(Vector::new(position.x, position.y))
+                    }
+                }
                 iced::mouse::Event::ButtonPressed(button) => {
+                    let state = tree.state.downcast_mut::<State>();
+
+                    let bounds = layout.bounds();
+
+                    if cursor.is_over(bounds) {
+                        if state.will_pan
+                            && let Some(position) = cursor.position()
+                        {
+                            state.pan_start = Some(Vector::new(position.x, position.y));
+                            return;
+                        }
+
+                        if let Some(point) = self.to_font_point(cursor.position(), &bounds) {
+                            print!("clicked {:?}", point);
+                        }
+                    }
+
                     // TODO: dispatch based on what needs to be done
                 }
                 iced::mouse::Event::ButtonReleased(button) => {
-                    // TODO: dispatch based on what needs to be done
+                    let state = tree.state.downcast_mut::<State>();
+
+                    if let Some(last_pan) = state.pan_start
+                        && let Some(position) = cursor.position()
+                        && let Some(on_pan) = &self.on_pan
+                    {
+                        let delta = position - last_pan;
+                        let delta = Vector::new(delta.x, delta.y);
+                        shell.publish(on_pan(self.offset + delta));
+                    }
+                    state.pan_start = None;
                 }
                 iced::mouse::Event::WheelScrolled { delta } => {
                     let y = match delta {
@@ -184,7 +371,6 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                     };
 
                     let message = if let Some(on_scale) = &self.on_scale {
-                        println!("try resize");
                         match y.total_cmp(&0.0) {
                             Ordering::Less => Some(on_scale(f32::max(2.0, self.scale * 0.9))),
                             Ordering::Greater => Some(on_scale(self.scale * 1.1)),
@@ -195,10 +381,10 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                     };
 
                     if let Some(message) = message {
-                        if _cursor.is_over(_layout.bounds()) {
-                            _shell.publish(message);
+                        if cursor.is_over(layout.bounds()) {
+                            shell.publish(message);
                         }
-                        _shell.capture_event();
+                        shell.capture_event();
                     }
                 }
             },

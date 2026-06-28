@@ -138,7 +138,6 @@ impl Directory {
             .fluid(120)
             .spacing(4),
         )
-        .padding(4)
         .into()
     }
 
@@ -312,8 +311,7 @@ impl Directory {
                         .spacing(4),
                 )
                 .align_right(Length::Fill),
-            )
-            .padding(4);
+            );
 
         let directory = self.glyphs(font, selected_glyph);
 
@@ -321,12 +319,17 @@ impl Directory {
             .push(Scrollable::new(inspector))
             .push(
                 Container::new(
-                    Column::new().push(toolbar).push(
-                        Scrollable::new(directory)
-                            .width(Length::Fill)
-                            .height(Length::Fill),
-                    ),
+                    Column::new()
+                        .push(toolbar)
+                        .push(
+                            Scrollable::new(directory)
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .spacing(4),
+                        )
+                        .spacing(4),
                 )
+                .padding(4)
                 .style(iced::widget::container::bordered_box),
             )
             .spacing(8)
