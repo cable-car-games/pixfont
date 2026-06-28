@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
 use iced::{
-    Element, Font, Padding, alignment,
+    Element, Font, alignment,
     widget::{Column, Container, Row, Text, text::IntoFragment},
 };
 

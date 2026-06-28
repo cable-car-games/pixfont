@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
-use std::{ffi::OsStr, fs::File, path::PathBuf};
+use std::{ffi::OsStr, path::PathBuf};
 
 use iced::{
     Element, Font, Pixels, Settings, Task, font,
-    wgpu::wgc::error,
     widget::{Column, Text},
 };
 use rfd::AsyncFileDialog;
@@ -51,7 +50,7 @@ struct Application {
 #[derive(Debug, Clone)]
 enum Message {
     None,
-    OpenProject(Option<PathBuf>, pixfont::Font),
+    OpenProject(Option<PathBuf>, Box<pixfont::Font>),
 
     Topbar(ui::topbar::Message),
     Directory(ui::view::directory::Message),
@@ -62,8 +61,8 @@ impl Application {
     fn boot() -> (Self, Task<Message>) {
         (
             Self {
-                topbar: Topbar::new(),
-                directory: Directory::new(),
+                topbar: Default::default(),
+                directory: Default::default(),
                 editor: Default::default(),
                 dirty: false,
                 project_path: None,
@@ -80,7 +79,8 @@ impl Application {
 
             Message::OpenProject(path, font) => {
                 self.dirty = false;
-                self.project = font;
+                self.project = *font;
+                self.project_path = path;
                 self.selected_glyph = None;
 
                 Task::none()
@@ -110,7 +110,7 @@ impl Application {
                         }
                     };
 
-                    Message::OpenProject(Some(file.path().to_owned()), font)
+                    Message::OpenProject(Some(file.path().to_owned()), Box::new(font))
                 }),
                 ui::topbar::Message::SaveFile => {
                     let font = self.project.clone();

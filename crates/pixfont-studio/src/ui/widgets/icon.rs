@@ -92,6 +92,5 @@ impl<'a> From<Icon> for Svg<'a> {
             .style(|theme: &Theme, _status| Style {
                 color: Some(theme.palette().text),
             })
-            .into()
     }
 }

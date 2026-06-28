@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::HashSet};
 
 use iced::{
     Background, Color, Element, Length, Point, Rectangle, Size, Vector,
@@ -16,7 +16,7 @@ pub struct GlyphEditor<'state, 'glyph, Message> {
     glyph: &'glyph pixfont::Glyph,
     scale: f32,
     offset: Vector<f32>,
-    tool: Tool,
+    _tool: Tool,
     on_scale: Option<Box<dyn Fn(f32) -> Message + 'state>>,
     on_pan: Option<Box<dyn Fn(Vector<f32>) -> Message + 'state>>,
 }
@@ -35,8 +35,14 @@ pub enum Tool {
 struct State {
     will_pan: bool,
     pan_start: Option<Vector<f32>>,
+    _is_pressed: bool,
+    _delta: Delta,
+}
 
-    is_pressed: bool,
+#[derive(Debug, Default)]
+pub struct Delta {
+    pub add: HashSet<Point>,
+    pub remove: HashSet<Point>,
 }
 
 impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
@@ -45,7 +51,7 @@ impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
             glyph,
             scale: 5.0,
             offset: Vector::new(0.0, 0.0),
-            tool: Tool::Pen,
+            _tool: Tool::Pen,
             on_scale: None,
             on_pan: None,
         }
@@ -125,8 +131,8 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
 
     fn layout(
         &mut self,
-        tree: &mut iced::advanced::widget::Tree,
-        renderer: &Renderer,
+        _tree: &mut iced::advanced::widget::Tree,
+        _renderer: &Renderer,
         limits: &iced::advanced::layout::Limits,
     ) -> iced::advanced::layout::Node {
         layout::Node::new(limits.max())
@@ -134,13 +140,13 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
 
     fn draw(
         &self,
-        tree: &iced::advanced::widget::Tree,
+        _tree: &iced::advanced::widget::Tree,
         renderer: &mut Renderer,
-        theme: &Theme,
-        style: &iced::advanced::renderer::Style,
+        _theme: &Theme,
+        _style: &iced::advanced::renderer::Style,
         layout: iced::advanced::Layout<'_>,
-        cursor: iced::advanced::mouse::Cursor,
-        viewport: &iced::Rectangle,
+        _cursor: iced::advanced::mouse::Cursor,
+        _viewport: &iced::Rectangle,
     ) {
         let bounds = layout.bounds();
         Draw::with(bounds, renderer, |draw| {
@@ -226,12 +232,12 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
             iced::Event::Keyboard(event) => match event {
                 iced::keyboard::Event::KeyPressed {
                     key,
-                    modified_key,
-                    physical_key,
-                    location,
-                    modifiers,
-                    text,
-                    repeat,
+                    modified_key: _modified_key,
+                    physical_key: _physical_key,
+                    location: _location,
+                    modifiers: _modifiers,
+                    text: _text,
+                    repeat: _repeat,
                 } => {
                     let state = tree.state.downcast_mut::<State>();
 
@@ -241,10 +247,10 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                 }
                 iced::keyboard::Event::KeyReleased {
                     key,
-                    modified_key,
-                    physical_key,
-                    location,
-                    modifiers,
+                    modified_key: _modified_key,
+                    physical_key: _physical_key,
+                    location: _location,
+                    modifiers: _modifiers,
                 } => {
                     let state = tree.state.downcast_mut::<State>();
 
@@ -253,7 +259,7 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                         state.pan_start = None;
                     }
                 }
-                iced::keyboard::Event::ModifiersChanged(modifiers) => {}
+                iced::keyboard::Event::ModifiersChanged(_modifiers) => {}
             },
             iced::Event::Mouse(event) => match event {
                 iced::mouse::Event::CursorEntered => {}
@@ -271,7 +277,7 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                         state.pan_start = Some(Vector::new(position.x, position.y))
                     }
                 }
-                iced::mouse::Event::ButtonPressed(button) => {
+                iced::mouse::Event::ButtonPressed(_button) => {
                     let state = tree.state.downcast_mut::<State>();
 
                     let bounds = layout.bounds();
@@ -291,7 +297,7 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
 
                     // TODO: dispatch based on what needs to be done
                 }
-                iced::mouse::Event::ButtonReleased(button) => {
+                iced::mouse::Event::ButtonReleased(_button) => {
                     let state = tree.state.downcast_mut::<State>();
 
                     if let Some(last_pan) = state.pan_start
@@ -328,9 +334,9 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                     }
                 }
             },
-            iced::Event::Window(event) => {}
-            iced::Event::Touch(event) => {}
-            iced::Event::InputMethod(event) => {}
+            iced::Event::Window(_event) => {}
+            iced::Event::Touch(_event) => {}
+            iced::Event::InputMethod(_event) => {}
         }
     }
 }
@@ -353,7 +359,7 @@ impl<'draw, Renderer: renderer::Renderer> Draw<'draw, Renderer> {
     fn with(
         bounds: Rectangle,
         renderer: &mut Renderer,
-        receiver: impl for<'inner> FnOnce(&mut Draw<'inner, Renderer>) -> (),
+        receiver: impl for<'inner> FnOnce(&mut Draw<'inner, Renderer>),
     ) {
         renderer.with_layer(bounds, |renderer: &mut Renderer| {
             let mut draw = Draw {
@@ -370,7 +376,7 @@ impl<'draw, Renderer: renderer::Renderer> Draw<'draw, Renderer> {
             Quad {
                 bounds: Rectangle {
                     x: self.bounds.x,
-                    y: y,
+                    y,
                     width: self.bounds.width,
                     height: 1.0,
                 },
@@ -384,7 +390,7 @@ impl<'draw, Renderer: renderer::Renderer> Draw<'draw, Renderer> {
         self.renderer.fill_quad(
             Quad {
                 bounds: Rectangle {
-                    x: x,
+                    x,
                     y: self.bounds.y,
                     width: 1.0,
                     height: self.bounds.height,

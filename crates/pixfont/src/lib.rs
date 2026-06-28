@@ -8,7 +8,6 @@ use std::hash::Hash;
 use glifnames::AGLFN;
 use glifnames::GlyphName;
 use indexmap::IndexMap;
-use indexmap::map::IntoIter;
 
 pub mod sets;
 
@@ -172,12 +171,6 @@ impl Pixels {
         Self::with_capacity(128)
     }
 
-    pub fn from_iter(pixels: impl IntoIterator<Item = Point>) -> Self {
-        Self {
-            pixels: HashSet::from_iter(pixels),
-        }
-    }
-
     pub fn with_capacity(size: usize) -> Self {
         Self {
             pixels: HashSet::with_capacity(size),
@@ -205,10 +198,7 @@ impl Pixels {
     }
 
     pub fn get(&self, point: Point) -> bool {
-        match self.pixels.get(&point) {
-            Some(_) => true,
-            None => false,
-        }
+        self.pixels.contains(&point)
     }
 
     pub fn set(&mut self, point: Point, set: bool) -> bool {
@@ -224,6 +214,14 @@ impl Pixels {
 
     pub fn pixels(&self) -> impl Iterator<Item = &Point> {
         self.pixels.iter()
+    }
+}
+
+impl FromIterator<Point> for Pixels {
+    fn from_iter<T: IntoIterator<Item = Point>>(iter: T) -> Self {
+        Self {
+            pixels: HashSet::from_iter(iter),
+        }
     }
 }
 

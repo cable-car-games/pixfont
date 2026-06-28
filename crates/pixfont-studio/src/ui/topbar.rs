@@ -8,7 +8,6 @@ use iced::{
     widget::{Button, Column, Container, Row, Text},
 };
 use iced_aw::{DropDown, drop_down::Alignment};
-use pixfont::export::Exporter;
 
 use crate::ui::widgets::icon::Icon;
 
@@ -88,14 +87,16 @@ impl Display for ExportType {
     }
 }
 
-impl Topbar {
-    pub fn new() -> Self {
+impl Default for Topbar {
+    fn default() -> Self {
         Self {
             view: View::Glyphs,
-            export_shown: false,
+            export_shown: Default::default(),
         }
     }
+}
 
+impl Topbar {
     pub fn view(&self) -> Element<'_, Message> {
         let button_style = |view: View| {
             if view == self.view {

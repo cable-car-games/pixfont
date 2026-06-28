@@ -11,6 +11,7 @@ use iced_aw::{DropDown, drop_down::Alignment};
 
 use crate::ui::widgets::{icon::Icon, inspector};
 
+#[derive(Default)]
 pub struct Directory {
     filter: Option<String>,
     order: DirectoryOrder,
@@ -21,13 +22,13 @@ pub struct Directory {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum DirectoryOrder {
     /// Don't order
-    #[default]
     None,
 
     /// Order by glyph name
     Name,
 
     /// Order by unicode mapping
+    #[default]
     Unicode,
 }
 
@@ -300,7 +301,7 @@ impl Directory {
                         .push(
                             TextInput::new(
                                 "Search",
-                                self.filter.clone().unwrap_or(String::new()).as_str(),
+                                self.filter.clone().unwrap_or_default().as_str(),
                             )
                             .on_input(Message::SetFilter)
                             .width(140),

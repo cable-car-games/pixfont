@@ -144,7 +144,7 @@ impl Editor {
             .into()
     }
 
-    pub fn update<'state>(&'state mut self, message: PrivateMessage) -> Task<Message> {
+    pub fn update(&mut self, message: PrivateMessage) -> Task<Message> {
         match message {
             PrivateMessage::SetScale(scale) => {
                 self.scale = scale;

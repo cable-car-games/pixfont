@@ -11,10 +11,10 @@ use crate::{Font, Glyph, Point, import::ImportError};
 pub const GLYPH_HEIGHT: usize = 16;
 pub const GLYPH_WIDTH_MAX: usize = 16;
 
-const GLYPH_X_MIN: i32 = -2;
-const GLYPH_X_MAX: i32 = 13;
-const GLYPH_Y_MIN: i32 = -4;
-const GLYPH_Y_MAX: i32 = 11;
+pub const GLYPH_X_MIN: i32 = -2;
+pub const GLYPH_X_MAX: i32 = 13;
+pub const GLYPH_Y_MIN: i32 = -4;
+pub const GLYPH_Y_MAX: i32 = 11;
 
 pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
     let json_string = read_to_string(read)?;
@@ -63,10 +63,7 @@ pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
             }
             "monospacewidth" => {
                 monospace_width = match value.as_str() {
-                    Some(value) => match u32::from_str_radix(value, 10) {
-                        Ok(value) => value,
-                        Err(_) => 0,
-                    },
+                    Some(value) => value.parse().unwrap_or_default(),
                     None => 0,
                 }
             }
@@ -87,7 +84,7 @@ pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
 }
 
 fn try_parse_glyph(key: &str, value: &JsonValue, font: &mut Font) -> Result<bool, ImportError> {
-    let Ok(codepoint) = u32::from_str_radix(key, 10) else {
+    let Ok(codepoint) = key.parse() else {
         return Ok(false);
     };
 
@@ -112,10 +109,7 @@ fn try_parse_glyph(key: &str, value: &JsonValue, font: &mut Font) -> Result<bool
             _ => None,
         })
         .map(|num| match num {
-            Some(num) => match u16::try_from(num) {
-                Ok(num) => Some(num),
-                Err(_) => None,
-            },
+            Some(num) => u16::try_from(num).ok(),
             None => None,
         })
         .collect();
