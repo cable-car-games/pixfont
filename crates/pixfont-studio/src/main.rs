@@ -3,9 +3,15 @@
 
 use std::{ffi::OsStr, path::PathBuf};
 
-use iced::{Element, Font, Pixels, Settings, Task, font, widget::Column};
+use iced::{
+    Element, Font, Pixels, Settings, Task, font,
+    widget::{Column, Text},
+};
 
-use crate::ui::{topbar::Topbar, view::directory::Directory};
+use crate::ui::{
+    topbar::Topbar,
+    view::{directory::Directory, editor::Editor},
+};
 
 pub mod ui;
 
@@ -31,6 +37,7 @@ fn main() -> iced::Result {
 struct Application {
     topbar: Topbar,
     directory: Directory,
+    editor: Editor,
 
     dirty: bool,
     project_path: Option<PathBuf>,
@@ -43,6 +50,7 @@ struct Application {
 enum Message {
     Topbar(ui::topbar::Message),
     Directory(ui::view::directory::Message),
+    Editor(ui::view::editor::Message),
 }
 
 impl Application {
@@ -51,6 +59,7 @@ impl Application {
             Self {
                 topbar: Topbar::new(),
                 directory: Directory::new(),
+                editor: Default::default(),
                 dirty: false,
                 project_path: None,
                 project: Default::default(),
@@ -154,17 +163,28 @@ impl Application {
 
                 _ => self.directory.update(message).map(Message::Directory),
             },
+            Message::Editor(message) => match message {
+                ui::view::editor::Message::Private(message) => {
+                    self.editor.update(message).map(Message::Editor)
+                }
+            },
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
         Column::new()
             .push(self.topbar.view().map(Message::Topbar))
-            .push(
-                self.directory
+            .push(match self.topbar.view {
+                ui::topbar::View::Glyphs => self
+                    .directory
                     .view(&self.project, &self.selected_glyph)
                     .map(Message::Directory),
-            )
+                ui::topbar::View::Edit => self
+                    .editor
+                    .view(&self.project, &self.selected_glyph)
+                    .map(Message::Editor),
+                ui::topbar::View::Settings => Text::new("Settings page").into(),
+            })
             .padding(8)
             .spacing(8)
             .into()

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Rareș Nistor
+
 use iced::{
     Element, Font, Padding, alignment,
     widget::{Column, Container, Row, Text, text::IntoFragment},

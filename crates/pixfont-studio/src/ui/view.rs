@@ -2,3 +2,4 @@
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
 pub mod directory;
+pub mod editor;
