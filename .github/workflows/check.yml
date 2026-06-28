@@ -8,6 +8,27 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Canary
+        run: |
+          set -e
+          ! grep -R 'FIXME(AIGEN)'   --exclude AGENTS.md --exclude CLAUDE.md --exclude .github/workflows/check.yml
+          ! grep -R 'SPDX-.\+\[AI\]' --exclude AGENTS.md --exclude CLAUDE.md --exclude .github/workflows/check.yml
+
+      - name: Install dependencies
+        run: sudo apt-get install -y libx11-dev libxkbcommon-dev libxrandr-dev
+
+      - run: reuse lint
+      - run: cargo fmt --check
+      - run: cargo clippy -- -D warnings
+
   build:
     runs-on: ubuntu-latest
 
@@ -19,14 +40,12 @@ jobs:
 
       - name: Canary
         run: |
-          ! grep -R 'FIXME(AIGEN)'   --exclude AGENTS.md --exclude CLAUDE.md
-          ! grep -R 'SPDX-.\+\[AI\]' --exclude AGENTS.md --exclude CLAUDE.md
+          set -e
+          ! grep -R 'FIXME(AIGEN)'   --exclude AGENTS.md --exclude CLAUDE.md --exclude .github/workflows/check.yml
+          ! grep -R 'SPDX-.\+\[AI\]' --exclude AGENTS.md --exclude CLAUDE.md --exclude .github/workflows/check.yml
 
       - name: Install dependencies
         run: sudo apt-get install -y libx11-dev libxkbcommon-dev libxrandr-dev
 
       - uses: Swatinem/rust-cache@v2
-
-      - run: cargo fmt --check
-      - run: cargo clippy
       - run: cargo test --verbose

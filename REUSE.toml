@@ -1,8 +1,24 @@
 version = 1
 
+# project meta
+[[annotations]]
+path = [".gitignore", ".gitmodules", "Cargo.*", "rust-toolchain.toml"]
+SPDX-License-Identifier = ["MIT OR Apache-2.0 OR AGPL-3.0-or-later"]
+SPDX-FileCopyrightText = "2026 Rareș Nistor"
+
+# CI
+[[annotations]]
+path = [".github/workflows/**/*"]
+SPDX-License-Identifier = ["MIT OR Apache-2.0 OR AGPL-3.0-or-later"]
+SPDX-FileCopyrightText = "2026 Rareș Nistor"
+
+#
+# docs
+#
+
 # documentation
 [[annotations]]
-path = ["docs/**/*", "README.md", "CONTRIBUTING.md"]
+path = ["docs/**/*", "README.md", "CONTRIBUTING.md", "AGENTS.md", "CLAUDE.md"]
 precedence = "override"
 SPDX-License-Identifier = "CC-BY-SA-4.0"
 SPDX-FileCopyrightText = "2026 Rareș Nistor"
@@ -14,11 +30,9 @@ precedence = "override"
 SPDX-License-Identifier = "CC0-1.0"
 SPDX-FileCopyrightText = "2026 Rareș Nistor"
 
-# project meta
-[[annotations]]
-path = [".gitignore", ".gitmodules", "Cargo.*"]
-SPDX-License-Identifier = ["MIT OR Apache-2.0 OR AGPL-3.0-or-later"]
-SPDX-FileCopyrightText = "2026 Rareș Nistor"
+#
+# embedded assets
+#
 
 # RazzaSans (Nunito Sans) in PixFont Studio
 [[annotations]]
