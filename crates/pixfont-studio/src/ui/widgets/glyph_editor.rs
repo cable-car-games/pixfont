@@ -4,7 +4,7 @@
 use std::cmp::Ordering;
 
 use iced::{
-    Color, Element, Length, Point, Rectangle, Size, Vector,
+    Background, Color, Element, Length, Point, Rectangle, Size, Vector,
     advanced::{
         Widget, layout,
         renderer::{self, Quad},
@@ -16,7 +16,7 @@ pub struct GlyphEditor<'state, 'glyph, Message> {
     glyph: &'glyph pixfont::Glyph,
     scale: f32,
     offset: Vector<f32>,
-
+    tool: Tool,
     on_scale: Option<Box<dyn Fn(f32) -> Message + 'state>>,
     on_pan: Option<Box<dyn Fn(Vector<f32>) -> Message + 'state>>,
 }
@@ -45,7 +45,7 @@ impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
             glyph,
             scale: 5.0,
             offset: Vector::new(0.0, 0.0),
-
+            tool: Tool::Pen,
             on_scale: None,
             on_pan: None,
         }
@@ -143,101 +143,41 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
         viewport: &iced::Rectangle,
     ) {
         let bounds = layout.bounds();
-
-        //renderer.fill_quad(
-        //    Quad {
-        //        bounds: layout_bounds,
-        //        ..Default::default()
-        //    },
-        //    Color::from_rgb8(0xFF, 0, 0xFF),
-        //);
-
-        // pixels
-        for pixel in self.glyph.pixels.pixels() {
-            if let Some(origin) = self.to_iced_rect(Some(*pixel), &bounds) {
-                renderer.fill_quad(
-                    Quad {
-                        bounds: origin,
-                        ..Default::default()
-                    },
-                    Color::WHITE,
-                );
+        Draw::with(bounds, renderer, |draw| {
+            // pixels
+            for pixel in self.glyph.pixels.pixels() {
+                if let Some(origin) = self.to_iced_rect(Some(*pixel), &bounds) {
+                    draw.renderer.fill_quad(
+                        Quad {
+                            bounds: origin,
+                            ..Default::default()
+                        },
+                        Color::WHITE,
+                    );
+                }
             }
-        }
 
-        // gridlines
-        let mut gx = bounds.x + self.offset.x % self.scale + (bounds.width / 2.0) % self.scale
-            - self.scale * 0.5;
-        let mut gy = bounds.y
-            + self.offset.y % self.scale
-            + (bounds.height / 2.0) % (self.scale)
-            + self.scale * 0.5;
-        while gx <= bounds.x + bounds.width {
-            renderer.fill_quad(
-                Quad {
-                    bounds: Rectangle {
-                        x: gx,
-                        y: bounds.y,
-                        width: 1.0,
-                        height: bounds.height,
-                    },
-                    ..Default::default()
-                },
-                Color::from_rgb8(0, 0, 0),
-            );
+            // gridlines
+            let mut gx = bounds.x + self.offset.x % self.scale + (bounds.width / 2.0) % self.scale
+                - self.scale * 0.5;
+            let mut gy = bounds.y
+                + self.offset.y % self.scale
+                + (bounds.height / 2.0) % (self.scale)
+                + self.scale * 0.5;
+            while gx <= bounds.x + bounds.width {
+                draw.vline(gx);
+                gx += self.scale;
+            }
+            while gy <= bounds.y + bounds.height {
+                draw.hline(gy);
+                gy += self.scale;
+            }
 
-            gx += self.scale;
-        }
-        while gy <= bounds.y + bounds.height {
-            renderer.fill_quad(
-                Quad {
-                    bounds: Rectangle {
-                        x: bounds.x,
-                        y: gy,
-                        width: bounds.width,
-                        height: 1.0,
-                    },
-                    ..Default::default()
-                },
-                Color::from_rgb8(0, 0, 0),
-            );
-
-            gy += self.scale;
-        }
-
-        // origin lines
-        renderer.fill_quad(
-            Quad {
-                bounds: Rectangle {
-                    x: f32::clamp(
-                        bounds.center_x() + self.offset.x - self.scale / 2.0,
-                        bounds.x,
-                        bounds.x + bounds.width,
-                    ),
-                    y: bounds.y,
-                    width: 1.0,
-                    height: bounds.height,
-                },
-                ..Default::default()
-            },
-            Color::from_rgb8(0x80, 0x20, 0x20),
-        );
-        renderer.fill_quad(
-            Quad {
-                bounds: Rectangle {
-                    x: bounds.x,
-                    y: f32::clamp(
-                        bounds.center_y() + self.offset.y + self.scale / 2.0,
-                        bounds.y,
-                        bounds.y + bounds.height,
-                    ),
-                    width: bounds.width,
-                    height: 1.0,
-                },
-                ..Default::default()
-            },
-            Color::from_rgb8(0x80, 0x20, 0x20),
-        );
+            // origin lines
+            draw.color = Color::from_rgb8(0x80, 0x20, 0x20).into();
+            draw.vline(bounds.center_x() + self.offset.x - self.scale / 2.0);
+            draw.hline(bounds.center_y() + self.offset.y + self.scale / 2.0);
+        });
     }
 
     fn mouse_interaction(
@@ -400,5 +340,58 @@ impl<'state, 'glyph: 'state, Message: 'state, Theme, Renderer: renderer::Rendere
 {
     fn from(widget: GlyphEditor<'state, 'glyph, Message>) -> Self {
         Self::new(widget)
+    }
+}
+
+struct Draw<'draw, Renderer: renderer::Renderer> {
+    renderer: &'draw mut Renderer,
+    bounds: Rectangle,
+    color: Background,
+}
+
+impl<'draw, Renderer: renderer::Renderer> Draw<'draw, Renderer> {
+    fn with(
+        bounds: Rectangle,
+        renderer: &mut Renderer,
+        receiver: impl for<'inner> FnOnce(&mut Draw<'inner, Renderer>) -> (),
+    ) {
+        renderer.with_layer(bounds, |renderer: &mut Renderer| {
+            let mut draw = Draw {
+                renderer,
+                bounds,
+                color: Color::BLACK.into(),
+            };
+            receiver(&mut draw)
+        });
+    }
+
+    fn hline(&mut self, y: f32) {
+        self.renderer.fill_quad(
+            Quad {
+                bounds: Rectangle {
+                    x: self.bounds.x,
+                    y: y,
+                    width: self.bounds.width,
+                    height: 1.0,
+                },
+                ..Default::default()
+            },
+            self.color,
+        );
+    }
+
+    fn vline(&mut self, x: f32) {
+        self.renderer.fill_quad(
+            Quad {
+                bounds: Rectangle {
+                    x: x,
+                    y: self.bounds.y,
+                    width: 1.0,
+                    height: self.bounds.height,
+                },
+                ..Default::default()
+            },
+            self.color,
+        );
     }
 }
