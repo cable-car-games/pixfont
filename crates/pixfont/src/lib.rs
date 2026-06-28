@@ -2,6 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
 use std::cmp::{max, min};
+use std::collections::HashSet;
+use std::hash::Hash;
 
 use glifnames::AGLFN;
 use glifnames::GlyphName;
@@ -9,10 +11,13 @@ use indexmap::IndexMap;
 
 pub mod sets;
 
+#[cfg(feature = "import")]
+pub mod import;
+
 #[cfg(test)]
 mod tests;
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Font {
     /// Information about the font.
     pub metadata: Metadata,
@@ -31,6 +36,12 @@ pub struct Font {
 }
 
 impl Font {
+    pub fn add_glyph_and_mapping(&mut self, codepoint: u32, name: &str, glyph: Glyph) -> &mut Self {
+        self.glyphs.insert(name.to_string(), glyph);
+        self.mappings.insert(codepoint, CodepointMapping::new(name));
+        self
+    }
+
     pub fn add_glyphs(&mut self, glyphs: &mut impl Iterator<Item = (String, Glyph)>) -> &mut Self {
         for (name, glyph) in glyphs {
             self.glyphs.insert(name, glyph);
@@ -81,7 +92,7 @@ impl Font {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Metadata {
     pub name: String,
     pub family: Option<String>,
@@ -93,7 +104,7 @@ pub struct Metadata {
     pub extra: IndexMap<String, String>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Metrics {
     /// The position where ascenders normally end.
     pub ascender: i32,
@@ -118,7 +129,7 @@ impl Metrics {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct CodepointMapping {
     /// Default glyph for this mapping.
     pub glyph: String,
@@ -136,7 +147,7 @@ impl CodepointMapping {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Glyph {
     pub pixels: Pixels,
 
@@ -150,96 +161,80 @@ pub struct Glyph {
     pub extra: IndexMap<String, String>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Pixels {
-    pixels: Vec<bool>,
-    size: Size,
-    origin: Option<Point>,
+    pixels: HashSet<Point>,
 }
 
 impl Pixels {
     pub fn new() -> Self {
-        Self::with_capacity(Size::new(16, 16))
+        Self::with_capacity(128)
     }
 
-    pub fn with_pixels(pixels: Vec<bool>, size: Size, origin: Point) -> Self {
+    pub fn from_iter(pixels: impl IntoIterator<Item = Point>) -> Self {
         Self {
-            pixels,
-            size,
-            origin: Some(origin),
+            pixels: HashSet::from_iter(pixels),
         }
     }
 
-    pub fn with_capacity(size: Size) -> Self {
-        let pixel_count = (size.width as usize) * (size.height as usize);
-
+    pub fn with_capacity(size: usize) -> Self {
         Self {
-            pixels: vec![false; pixel_count],
-            size,
-            origin: None,
+            pixels: HashSet::with_capacity(size),
         }
     }
 
     pub fn size(&self) -> Size {
-        self.size
-    }
-
-    pub fn origin(&self) -> Point {
-        self.origin.unwrap_or_default()
+        self.rect().size()
     }
 
     pub fn rect(&self) -> Rect {
-        Rect::with(self.origin(), self.size)
+        self.rect_impl().unwrap_or(Rect::ZERO)
     }
 
-    pub fn pixels(&self) -> Vec<bool> {
-        self.pixels.clone()
-    }
+    fn rect_impl(&self) -> Option<Rect> {
+        let min_x = self.pixels.iter().map(|px| px.x).min()?;
+        let min_y = self.pixels.iter().map(|px| px.y).min()?;
+        let max_x = self.pixels.iter().map(|px| px.x).min()?;
+        let max_y = self.pixels.iter().map(|px| px.y).min()?;
 
-    fn offset_of(&self, Point { x, y }: Point) -> Option<usize> {
-        let origin = self.origin?;
+        let bottom_left = Point::new(min_x, min_y);
+        let top_right = Point::new(max_x + 1, max_y + 1);
 
-        let x = x.checked_sub(origin.x)? as usize;
-        let y = y.checked_sub(origin.y)? as usize;
-
-        let offset = y * (self.size.width as usize) + x;
-        Some(offset)
-    }
-
-    fn resize_to_include_point(&mut self, point: Point) -> usize {
-        if let Some(offset) = self.offset_of(point) {
-            return offset;
-        }
-
-        todo!()
+        Some(Rect::with_points(bottom_left, top_right))
     }
 
     pub fn get(&self, point: Point) -> bool {
-        if let Some(offset) = self.offset_of(point) {
-            self.pixels[offset]
-        } else {
-            false
+        match self.pixels.get(&point) {
+            Some(_) => true,
+            None => false,
         }
     }
 
-    pub fn set(&mut self, point: Point) {
-        self.resize_to_include_point(point);
+    pub fn set(&mut self, point: Point, set: bool) -> bool {
+        match set {
+            true => self.pixels.insert(point),
+            false => self.pixels.remove(&point),
+        }
+    }
+
+    pub fn toggle(&mut self, point: Point) -> bool {
+        self.set(point, !self.get(point))
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Guidelines {
     pub x: Vec<Guideline>,
     pub y: Vec<Guideline>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Guideline {
     pub name: String,
     pub position: i32,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq)]
 pub struct Point {
     pub x: i32,
     pub y: i32,
@@ -251,19 +246,24 @@ impl Point {
     }
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq)]
 pub struct Size {
     pub width: u32,
     pub height: u32,
 }
 
 impl Size {
+    pub const ZERO: Size = Size {
+        width: 0,
+        height: 0,
+    };
+
     pub fn new(width: u32, height: u32) -> Self {
         Self { width, height }
     }
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Hash)]
 pub struct Rect {
     pub x: i32,
     pub y: i32,
@@ -272,6 +272,13 @@ pub struct Rect {
 }
 
 impl Rect {
+    pub const ZERO: Rect = Rect {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+    };
+
     pub fn new(x: i32, y: i32, width: u32, height: u32) -> Self {
         Self {
             x,
@@ -292,5 +299,29 @@ impl Rect {
         let y1 = max(p0.y, p1.y);
 
         Self::new(x0, y0, x1.abs_diff(x0), y1.abs_diff(y0))
+    }
+
+    pub fn bottom_left(&self) -> Point {
+        Point::new(self.x, self.y)
+    }
+
+    pub fn left(&self) -> i32 {
+        self.x
+    }
+
+    pub fn bottom(&self) -> i32 {
+        self.y
+    }
+
+    pub fn right(&self) -> i32 {
+        self.x + (self.width as i32)
+    }
+
+    pub fn top(&self) -> i32 {
+        self.y + (self.height as i32)
+    }
+
+    pub fn size(&self) -> Size {
+        Size::new(self.width, self.height)
     }
 }
