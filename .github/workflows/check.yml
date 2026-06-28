@@ -23,7 +23,7 @@ jobs:
           ! grep -R 'SPDX-.\+\[AI\]' --exclude AGENTS.md --exclude CLAUDE.md --exclude .github/workflows/check.yml
 
       - name: Install dependencies
-        run: sudo apt-get install -y libx11-dev libxkbcommon-dev libxrandr-dev
+        run: sudo apt-get install -y libx11-dev libxkbcommon-dev libxrandr-dev reuse
 
       - run: reuse lint
       - run: cargo fmt --check
