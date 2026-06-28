@@ -151,10 +151,16 @@ mod test {
 
     use std::io::Cursor;
 
+    macro_rules! testdata {
+        ($path: literal) => {
+            include_bytes!(concat!("../../test/pentacom/", $path))
+        };
+    }
+
     #[test]
     fn test_born2b_sporty_v2() {
-        let file = include_bytes!("pentacom/born2b_sporty_v2.json");
-        let mut cursor = Cursor::new(file);
+        let data = testdata!("born2b_sporty_v2.json");
+        let mut cursor = Cursor::new(data);
 
         let result = super::import(&mut cursor);
         assert_matches!(result, Ok(_));
