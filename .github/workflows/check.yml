@@ -28,6 +28,7 @@ jobs:
       - name: reuse lint
         uses: fsfe/reuse-action@v6
 
+      - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --check
       - run: cargo clippy -- -D warnings
 
