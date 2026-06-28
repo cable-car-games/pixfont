@@ -37,12 +37,14 @@ git submodule update --init
 
 ## Before you commit
 
-Make sure you run the following things before you push:
+Use [pre-commit] to run the a battery of style and tests before you commit.
 
-- `cargo fmt`
-- `cargo clippy`
-- `cargo test`
-- `reuse lint`
+```bash
+pre-commit install  # install hooks
+pre-commit run      # run the checks manually
+```
+
+[pre-commit]: https://pre-commit.com/
 
 ## Licensing of contributions
 
