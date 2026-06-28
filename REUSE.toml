@@ -45,3 +45,13 @@ SPDX-FileCopyrightText = "Copyright 2016 The Nunito Sans Project Authors (https:
 path = ["external/bootstrap-icons/**/*"]
 SPDX-License-Identifier = "MIT"
 SPDX-FileCopyrightText = "Copyright (c) 2019-2024 The Bootstrap Authors"
+
+#
+# testing artifacts
+#
+
+# Pentacom fonts released as "Public Domain"
+[[annotations]]
+path = ["crates/pixfont/test/pentacom/born2b_sporty_v2.json"]
+SPDX-License-Identifier = "CC0-1.0"
+SPDX-FileCopyrightText = "JapanYoshi"
