@@ -4,3 +4,4 @@
 pub mod glyph_editor;
 pub mod icon;
 pub mod inspector;
+pub mod settings;

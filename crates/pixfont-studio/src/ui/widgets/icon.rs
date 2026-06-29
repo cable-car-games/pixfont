@@ -14,6 +14,7 @@ use iced::{
 /// Please keep the names as close to 1:1 to the original source.
 ///
 /// - Bi: https://icons.getbootstrap.com/?q=arrow
+///
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Icon {
     BiArrowClockwise,
@@ -31,7 +32,9 @@ pub enum Icon {
     BiFloppy,
     BiFolder2Open,
     BiGearWideConnected,
+    BiInfoCircleFill,
     BiPaintBucket,
+    BiPalette,
     BiPen,
     BiPlusLg,
     BiSearch,
@@ -39,6 +42,8 @@ pub enum Icon {
     BiSquare,
     BiZoomIn,
     BiZoomOut,
+    BiChevronRight,
+    BiChevronLeft,
 }
 
 macro_rules! bi {
@@ -69,7 +74,9 @@ impl Icon {
             Icon::BiFloppy => bi!("floppy"),
             Icon::BiFolder2Open => bi!("folder2-open"),
             Icon::BiGearWideConnected => bi!("gear-wide-connected"),
+            Icon::BiInfoCircleFill => bi!("info-circle-fill"),
             Icon::BiPaintBucket => bi!("paint-bucket"),
+            Icon::BiPalette => bi!("palette"),
             Icon::BiPen => bi!("pen"),
             Icon::BiPlusLg => bi!("plus-lg"),
             Icon::BiSearch => bi!("search"),
@@ -77,6 +84,8 @@ impl Icon {
             Icon::BiSquare => bi!("square"),
             Icon::BiZoomIn => bi!("zoom-in"),
             Icon::BiZoomOut => bi!("zoom-out"),
+            Icon::BiChevronRight => bi!("chevron-right"),
+            Icon::BiChevronLeft => bi!("chevron-left"),
         }
     }
 

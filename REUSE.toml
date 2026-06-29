@@ -2,7 +2,13 @@ version = 1
 
 # project meta
 [[annotations]]
-path = [".gitignore", ".gitmodules", "Cargo.*", "rust-toolchain.toml"]
+path = [
+    ".gitignore",
+    ".gitmodules",
+    "Cargo.*",
+    "rust-toolchain.toml",
+    ".pre-commit-config.yaml",
+]
 SPDX-License-Identifier = ["MIT OR Apache-2.0 OR AGPL-3.0-or-later"]
 SPDX-FileCopyrightText = "2026 Rareș Nistor"
 

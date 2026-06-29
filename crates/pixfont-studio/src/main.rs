@@ -3,16 +3,8 @@
 
 use std::{ffi::OsStr, path::PathBuf};
 
-use iced::{
-    Element, Font, Pixels, Settings, Task, font,
-    widget::{Column, Text},
-};
+use iced::{Element, Font, Pixels, Settings, Task, font, widget::Column};
 use rfd::AsyncFileDialog;
-
-use crate::ui::{
-    topbar::Topbar,
-    view::{directory::Directory, editor::Editor},
-};
 
 pub mod ui;
 
@@ -36,9 +28,10 @@ fn main() -> iced::Result {
 }
 
 struct Application {
-    topbar: Topbar,
-    directory: Directory,
-    editor: Editor,
+    topbar: ui::topbar::Topbar,
+    directory: ui::view::directory::Directory,
+    editor: ui::view::editor::Editor,
+    settings: ui::view::settings::Settings,
 
     dirty: bool,
     project_path: Option<PathBuf>,
@@ -55,6 +48,7 @@ enum Message {
     Topbar(ui::topbar::Message),
     Directory(ui::view::directory::Message),
     Editor(ui::view::editor::Message),
+    Settings(ui::view::settings::Message),
 }
 
 impl Application {
@@ -64,6 +58,7 @@ impl Application {
                 topbar: Default::default(),
                 directory: Default::default(),
                 editor: Default::default(),
+                settings: Default::default(),
                 dirty: false,
                 project_path: None,
                 project: Default::default(),
@@ -238,6 +233,11 @@ impl Application {
                     self.editor.update(message).map(Message::Editor)
                 }
             },
+            Message::Settings(message) => match message {
+                ui::view::settings::Message::Private(message) => {
+                    self.settings.update(message).map(Message::Settings)
+                }
+            },
         }
     }
 
@@ -253,7 +253,7 @@ impl Application {
                     .editor
                     .view(&self.project, &self.selected_glyph)
                     .map(Message::Editor),
-                ui::topbar::View::Settings => Text::new("Settings page").into(),
+                ui::topbar::View::Settings => self.settings.view().map(Message::Settings),
             })
             .padding(8)
             .spacing(8)
