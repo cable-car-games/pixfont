@@ -1,6 +1,6 @@
 # PixFont Specification
 
-TBD
+* [Current Draft](./v0/)
 
 ## Licence
 

@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cable-car-games.github.io/pixfont/schema/v0-202606.json",
+  "title": "PixFont schema (June 2026 draft)",
+  "description": "The current draft definition of the next PixFont project schema.",
+  "type": "object",
+  "required": ["metadata", "metrics", "mappings", "glyphs"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "The version of the schema .",
+      "pattern": "^0-202606$"
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata",
+      "description": "Information about this font."
+    },
+    "metrics": {
+      "$ref": "#/$defs/metrics",
+      "description": "The font's metrics."
+    },
+    "alternates": {
+      "$ref": "#/$defs/alternates",
+      "description": "Names and descriptions of alternate mappings."
+    },
+    "mappings": {
+      "$ref": "#/$defs/mappings",
+      "description": "Unicode to glyph mappings."
+    },
+    "glyphs": {
+      "$ref": "#/$defs/glyphs",
+      "description": "The glyphs present in the font."
+    }
+  },
+  "$defs": {
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of this font."
+        },
+        "family": {
+          "type": "string",
+          "description": "The name of the font family (should be the same across multiple variations)."
+        },
+        "weight": {
+          "type": "string",
+          "description": "The weight of the font (i.e. Bold, Black, Thin, etc.)."
+        },
+        "style": {
+          "type": "string",
+          "description": "The style of the font (i.e. Roman, Italic, Cursive)."
+        },
+        "author": {
+          "type": "string",
+          "description": "The author of the font."
+        },
+        "copyright": {
+          "type": "string",
+          "description": "The copyright of the font."
+        },
+        "license": {
+          "type": "string",
+          "description": "The font's licence."
+        },
+        "extra": {
+          "$ref": "#/$defs/extra"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["ascender", "descender"],
+      "properties": {
+        "ascender": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "descender": {
+          "type": "integer",
+          "maximum": 0
+        },
+        "capHeight": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "xHeight": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "monoAdvance": {
+          "type": "integer"
+        },
+        "guidelines": {
+          "$ref": "#/$defs/guidelines"
+        }
+      }
+    },
+    "alternates": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "mappings": {
+      "type": "object",
+      "patternProperties": {
+        "U\\+[0-9A-F]+": {
+          "anyOf": [
+            { "type": "string" },
+            {
+              "type": "object",
+              "required": ["glyph"],
+              "properties": {
+                "glyph": { "type": "string" },
+                "alternate": {
+                  "additionalProperties": { "type": "string" }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "glyphs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "advance": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "offset": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "pixels": {
+            "type": "string",
+            "pattern": "^\\s*(\\|[.X]+\\|)*\\s*$"
+          },
+          "guidelines": {
+            "$ref": "#/$defs/guidelines"
+          },
+          "extra": {
+            "$ref": "#/$defs/extra"
+          }
+        }
+      }
+    },
+    "extra": {
+      "type": "object",
+      "description": "Additional information.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "guidelines": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "array", "items": { "$ref": "#/$defs/guideline" } },
+        "y": { "type": "array", "items": { "$ref": "#/$defs/guideline" } }
+      }
+    },
+    "guideline": {
+      "type": "object",
+      "required": ["name", "value"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "position": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

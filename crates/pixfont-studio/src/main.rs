@@ -3,7 +3,7 @@
 
 use std::{ffi::OsStr, path::PathBuf};
 
-use iced::{Element, Font, Pixels, Settings, Task, font, widget::Column};
+use iced::{Element, Font, Pixels, Settings, Task, font, widget::Column, window};
 use rfd::AsyncFileDialog;
 
 pub mod ui;
@@ -12,6 +12,10 @@ const RAZZA_SANS_REGULAR_TTF: &[u8] = include_bytes!("ui/font/RazzaSans/Razza Sa
 const RAZZA_SANS_BOLD_TTF: &[u8] = include_bytes!("ui/font/RazzaSans/Razza Sans Bold.ttf");
 
 fn main() -> iced::Result {
+    let image =
+        image::load_from_memory(include_bytes!("../../../logo.png")).expect("Failed to load icon");
+    let icon = iced::window::icon::from_rgba(image.as_bytes().to_vec(), 24, 24).unwrap();
+
     iced::application(Application::boot, Application::update, Application::view)
         .title(Application::title)
         .font(RAZZA_SANS_REGULAR_TTF)
@@ -22,6 +26,10 @@ fn main() -> iced::Result {
                 ..Default::default()
             },
             default_text_size: Pixels::from(13.0),
+            ..Default::default()
+        })
+        .window(window::Settings {
+            icon: Some(icon),
             ..Default::default()
         })
         .run()

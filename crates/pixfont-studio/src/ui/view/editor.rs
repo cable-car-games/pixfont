@@ -1,14 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
+use std::i32;
+
 use iced::{
     Element, Length, Task, Vector,
-    widget::{Button, Column, Container, Row, Scrollable, Space, Text},
+    widget::{
+        Button, Column, Container, Row, Scrollable, Space, Text, TextInput, button, text_input,
+    },
 };
+use iced_aw::{NumberInput, number_input};
 
 use crate::ui::widgets::{
     glyph_editor::{GlyphEditor, Tool},
     icon::Icon,
+    inspector,
 };
 
 pub struct Editor {
@@ -24,6 +30,7 @@ pub enum Message {
 
 #[derive(Debug, Clone)]
 pub enum PrivateMessage {
+    None,
     SetScale(f32),
     SetOffset(Vector<f32>),
     SetTool(Tool),
@@ -42,7 +49,7 @@ impl Default for Editor {
 impl Editor {
     pub fn view<'state>(
         &'state self,
-        _font: &'state pixfont::Font,
+        font: &'state pixfont::Font,
         selected_glyph_name: &Option<String>,
     ) -> Element<'state, Message> {
         let Some(selected_glyph_name) = selected_glyph_name else {
@@ -50,12 +57,70 @@ impl Editor {
             return Text::new("(no glyph selected)").into();
         };
 
-        let Some(glyph) = _font.glyphs.get(selected_glyph_name) else {
+        let Some(glyph) = font.glyphs.get(selected_glyph_name) else {
             // this should ideally never happen, but we check for it anyway
             return Text::new("(glyph does not exist)").into();
         };
 
-        let inspector = Column::new().width(320).spacing(8);
+        let inspector = Column::new()
+            .width(320)
+            .spacing(8)
+            .push(
+                inspector::section("Glyph")
+                    .push(inspector::property("Glyph name", text_input("", "")))
+                    .push(inspector::property("Codepoint", text_input("", "")))
+                    .push(inspector::property("Alternate", text_input("", "")))
+                    .push(inspector::property("Advance", text_input("", ""))),
+            )
+            .push(
+                inspector::section("Metrics")
+                    .push(inspector::property(
+                        "Ascender",
+                        number_input(&font.metrics.ascender, 0..i32::MAX, |_n| {
+                            Message::Private(PrivateMessage::None)
+                        })
+                        .width(Length::Fill),
+                    ))
+                    .push(inspector::property(
+                        "Descender",
+                        number_input(&font.metrics.descender, i32::MIN..0, |_n_| {
+                            Message::Private(PrivateMessage::None)
+                        })
+                        .width(Length::Fill),
+                    ))
+                    .push(inspector::property(
+                        "Cap height",
+                        number_input(&font.metrics.cap_height, 0..i32::MAX, |_n_| {
+                            Message::Private(PrivateMessage::None)
+                        })
+                        .width(Length::Fill),
+                    ))
+                    .push(inspector::property(
+                        "x height",
+                        number_input(&font.metrics.x_height, 0..i32::MAX, |_n_| {
+                            Message::Private(PrivateMessage::None)
+                        })
+                        .width(Length::Fill),
+                    )),
+            )
+            .push(
+                inspector::section("Guidelines")
+                    .extend(font.metrics.guideline.x.iter().map(|guideline| {
+                        Row::new()
+                            .spacing(2)
+                            .push(text_input("(key)", &guideline.name))
+                            .push(number_input(
+                                &guideline.position,
+                                i32::MIN..i32::MAX,
+                                |_| Message::Private(PrivateMessage::None),
+                            ))
+                            .push(button("x"))
+                            .push(button("G"))
+                            .push(button("×"))
+                            .into()
+                    }))
+                    .push(button("Add guideline")),
+            );
 
         let toolbar = Row::new()
             .push(
@@ -122,6 +187,7 @@ impl Editor {
             .spacing(2);
 
         Row::new()
+            .spacing(8)
             .push(Scrollable::new(inspector))
             .push(
                 Container::new(
@@ -146,6 +212,7 @@ impl Editor {
 
     pub fn update(&mut self, message: PrivateMessage) -> Task<Message> {
         match message {
+            PrivateMessage::None => Task::none(),
             PrivateMessage::SetScale(scale) => {
                 self.scale = scale;
                 Task::none()

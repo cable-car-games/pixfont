@@ -75,6 +75,7 @@ impl Font {
 
     pub fn get_glyph_codepoint(&self, glyph_name: &str) -> Option<(u32, Option<&String>)> {
         // FIXME: horrible way to do this, something to optimise later
+        //        once the data model has been properly specced
 
         self.mappings.iter().find_map(|(codepoint, mapping)| {
             if mapping.glyph == glyph_name {
@@ -114,6 +115,9 @@ pub struct Metrics {
 
     /// The height of capital characters.
     pub cap_height: i32,
+
+    /// The height of lower-case characters (such as 'x').
+    pub x_height: i32,
 
     /// If set, the renderer will attempt to format this font as monospace with
     /// all glyphs advancing this many pixels.
@@ -188,8 +192,8 @@ impl Pixels {
     fn rect_impl(&self) -> Option<Rect> {
         let min_x = self.pixels.iter().map(|px| px.x).min()?;
         let min_y = self.pixels.iter().map(|px| px.y).min()?;
-        let max_x = self.pixels.iter().map(|px| px.x).min()?;
-        let max_y = self.pixels.iter().map(|px| px.y).min()?;
+        let max_x = self.pixels.iter().map(|px| px.x).max()?;
+        let max_y = self.pixels.iter().map(|px| px.y).max()?;
 
         let bottom_left = Point::new(min_x, min_y);
         let top_right = Point::new(max_x + 1, max_y + 1);
