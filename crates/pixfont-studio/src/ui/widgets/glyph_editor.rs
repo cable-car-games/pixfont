@@ -14,9 +14,11 @@ use iced::{
 
 pub struct GlyphEditor<'state, 'glyph, Message> {
     glyph: &'glyph pixfont::Glyph,
+    metrics: &'glyph pixfont::Metrics,
     scale: f32,
     offset: Vector<f32>,
     _tool: Tool,
+    guidelines: Vec<pixfont::Guidelines>,
     on_scale: Option<Box<dyn Fn(f32) -> Message + 'state>>,
     on_pan: Option<Box<dyn Fn(Vector<f32>) -> Message + 'state>>,
 }
@@ -46,14 +48,16 @@ pub struct Delta {
 }
 
 impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
-    pub fn new(glyph: &'glyph pixfont::Glyph) -> Self {
+    pub fn new(glyph: &'glyph pixfont::Glyph, metrics: &'glyph pixfont::Metrics) -> Self {
         GlyphEditor {
             glyph,
+            metrics,
             scale: 5.0,
             offset: Vector::new(0.0, 0.0),
             _tool: Tool::Pen,
             on_scale: None,
             on_pan: None,
+            guidelines: Vec::new(),
         }
     }
 
@@ -64,6 +68,11 @@ impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
 
     pub fn offset(mut self, offset: Vector<f32>) -> Self {
         self.offset = offset;
+        self
+    }
+
+    pub fn guidelines(mut self, guidelines: pixfont::Guidelines) -> Self {
+        self.guidelines.push(guidelines);
         self
     }
 
@@ -178,6 +187,48 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                 draw.hline(gy);
                 gy += self.scale;
             }
+
+            // guidelines
+            for guidelines in &self.guidelines {
+                draw.color = Color::from_rgb8(0x80, 0x00, 0xFF).into();
+
+                for pixfont::Guideline { position, .. } in &guidelines.x {
+                    draw.vline(
+                        bounds.center_x() + self.offset.x - (0.5 * self.scale)
+                            + ((*position as f32) * self.scale),
+                    );
+                }
+
+                for pixfont::Guideline { position, .. } in &guidelines.y {
+                    draw.hline(
+                        bounds.center_y() + self.offset.y + (0.5 * self.scale)
+                            - ((*position as f32) * self.scale),
+                    );
+                }
+            }
+
+            // metrics lines
+            draw.color = Color::from_rgb8(0x80, 0xFF, 0).into();
+            draw.vline(
+                bounds.center_x() + self.offset.x - self.scale / 2.0
+                    + (self.glyph.advance as f32) * self.scale,
+            );
+            draw.hline(
+                bounds.center_y() + self.offset.y + self.scale / 2.0
+                    - (self.metrics.ascender as f32) * self.scale,
+            );
+            draw.hline(
+                bounds.center_y() + self.offset.y + self.scale / 2.0
+                    - (self.metrics.descender as f32) * self.scale,
+            );
+            draw.hline(
+                bounds.center_y() + self.offset.y + self.scale / 2.0
+                    - (self.metrics.cap_height as f32) * self.scale,
+            );
+            draw.hline(
+                bounds.center_y() + self.offset.y + self.scale / 2.0
+                    - (self.metrics.x_height as f32) * self.scale,
+            );
 
             // origin lines
             draw.color = Color::from_rgb8(0x80, 0x20, 0x20).into();

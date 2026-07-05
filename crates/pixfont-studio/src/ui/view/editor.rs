@@ -5,11 +5,9 @@ use std::i32;
 
 use iced::{
     Element, Length, Task, Vector,
-    widget::{
-        Button, Column, Container, Row, Scrollable, Space, Text, TextInput, button, text_input,
-    },
+    widget::{Button, Column, Container, Row, Scrollable, Space, Text, button, text, text_input},
 };
-use iced_aw::{NumberInput, number_input};
+use iced_aw::number_input;
 
 use crate::ui::widgets::{
     glyph_editor::{GlyphEditor, Tool},
@@ -26,6 +24,76 @@ pub struct Editor {
 #[derive(Debug, Clone)]
 pub enum Message {
     Private(PrivateMessage),
+    SetGlyphProp(GlyphProp),
+    SetGuideline(GuidelineAction),
+}
+
+#[derive(Debug, Clone)]
+pub enum GlyphProp {
+    Advance(u32),
+    Ascender(i32),
+    Descender(i32),
+    CapHeight(i32),
+    XHeight(i32),
+}
+
+#[derive(Debug, Clone)]
+pub enum GuidelineAction {
+    /// Create a new empty guideline.
+    Create,
+
+    /// Rename a guideline.
+    Rename {
+        scope: GuidelineScope,
+        direction: GuidelineDirection,
+        index: usize,
+        name: String,
+    },
+
+    /// Set a guideline.
+    Set {
+        scope: GuidelineScope,
+        direction: GuidelineDirection,
+        index: usize,
+        position: i32,
+    },
+
+    /// Remove a guideline.
+    Remove {
+        scope: GuidelineScope,
+        direction: GuidelineDirection,
+        index: usize,
+    },
+
+    /// Move a local (glyph-specific) guideline to the global scope (font-wide).
+    MakeGlobal {
+        direction: GuidelineDirection,
+        index: usize,
+    },
+
+    /// Move a global (font-wide) guideline to the local scope.
+    MakeLocal {
+        direction: GuidelineDirection,
+        index: usize,
+    },
+
+    /// Make a vertical guideline horizontal.
+    MakeX { scope: GuidelineScope, index: usize },
+
+    /// Make a horizontal guideline vertical.
+    MakeY { scope: GuidelineScope, index: usize },
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum GuidelineScope {
+    Global,
+    Local,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum GuidelineDirection {
+    X,
+    Y,
 }
 
 #[derive(Debug, Clone)]
@@ -50,7 +118,7 @@ impl Editor {
     pub fn view<'state>(
         &'state self,
         font: &'state pixfont::Font,
-        selected_glyph_name: &Option<String>,
+        selected_glyph_name: Option<&'state String>,
     ) -> Element<'state, Message> {
         let Some(selected_glyph_name) = selected_glyph_name else {
             // TODO: disable the tab while a glyph is not selected, or select a default gltph
@@ -67,59 +135,152 @@ impl Editor {
             .spacing(8)
             .push(
                 inspector::section("Glyph")
-                    .push(inspector::property("Glyph name", text_input("", "")))
-                    .push(inspector::property("Codepoint", text_input("", "")))
-                    .push(inspector::property("Alternate", text_input("", "")))
-                    .push(inspector::property("Advance", text_input("", ""))),
+                    .push(inspector::property("Glyph name", text(selected_glyph_name)))
+                    .push(inspector::property("Codepoint", text("U+...")))
+                    .push(inspector::property("Alternate", text("...")))
+                    .push(inspector::property(
+                        "Advance",
+                        number_input(&glyph.advance, 0..(i32::MAX as u32), |value| {
+                            Message::SetGlyphProp(GlyphProp::Advance(value))
+                        }),
+                    )),
             )
             .push(
                 inspector::section("Metrics")
                     .push(inspector::property(
+                        "Em height",
+                        text((font.metrics.ascender - font.metrics.descender).to_string()),
+                    ))
+                    .push(inspector::property(
                         "Ascender",
-                        number_input(&font.metrics.ascender, 0..i32::MAX, |_n| {
-                            Message::Private(PrivateMessage::None)
+                        number_input(&font.metrics.ascender, 0..i32::MAX, |value| {
+                            Message::SetGlyphProp(GlyphProp::Ascender(value))
                         })
                         .width(Length::Fill),
                     ))
                     .push(inspector::property(
                         "Descender",
-                        number_input(&font.metrics.descender, i32::MIN..0, |_n_| {
-                            Message::Private(PrivateMessage::None)
+                        number_input(&font.metrics.descender, i32::MIN..0, |value| {
+                            Message::SetGlyphProp(GlyphProp::Descender(value))
                         })
                         .width(Length::Fill),
                     ))
                     .push(inspector::property(
                         "Cap height",
-                        number_input(&font.metrics.cap_height, 0..i32::MAX, |_n_| {
-                            Message::Private(PrivateMessage::None)
+                        number_input(&font.metrics.cap_height, 0..i32::MAX, |value| {
+                            Message::SetGlyphProp(GlyphProp::CapHeight(value))
                         })
                         .width(Length::Fill),
                     ))
                     .push(inspector::property(
                         "x height",
-                        number_input(&font.metrics.x_height, 0..i32::MAX, |_n_| {
-                            Message::Private(PrivateMessage::None)
+                        number_input(&font.metrics.x_height, 0..i32::MAX, |value| {
+                            Message::SetGlyphProp(GlyphProp::XHeight(value))
                         })
                         .width(Length::Fill),
                     )),
             )
             .push(
                 inspector::section("Guidelines")
-                    .extend(font.metrics.guideline.x.iter().map(|guideline| {
-                        Row::new()
-                            .spacing(2)
-                            .push(text_input("(key)", &guideline.name))
-                            .push(number_input(
-                                &guideline.position,
-                                i32::MIN..i32::MAX,
-                                |_| Message::Private(PrivateMessage::None),
-                            ))
-                            .push(button("x"))
-                            .push(button("G"))
-                            .push(button("×"))
-                            .into()
-                    }))
-                    .push(button("Add guideline")),
+                    .extend(
+                        [
+                            (
+                                GuidelineScope::Global,
+                                GuidelineDirection::X,
+                                &font.metrics.guidelines.x,
+                            ),
+                            (
+                                GuidelineScope::Global,
+                                GuidelineDirection::Y,
+                                &font.metrics.guidelines.y,
+                            ),
+                            (
+                                GuidelineScope::Local,
+                                GuidelineDirection::X,
+                                &glyph.guidelines.x,
+                            ),
+                            (
+                                GuidelineScope::Local,
+                                GuidelineDirection::Y,
+                                &glyph.guidelines.y,
+                            ),
+                        ]
+                        .into_iter()
+                        .flat_map(|(scope, direction, vec)| {
+                            vec.iter().enumerate().map(move |(index, guideline)| {
+                                Row::new()
+                                    .spacing(2)
+                                    .push(text_input("(key)", &guideline.name).on_input(
+                                        move |name| {
+                                            Message::SetGuideline(GuidelineAction::Rename {
+                                                scope,
+                                                direction,
+                                                index,
+                                                name,
+                                            })
+                                        },
+                                    ))
+                                    .push(number_input(
+                                        &guideline.position,
+                                        i32::MIN..i32::MAX,
+                                        move |value| {
+                                            Message::SetGuideline(GuidelineAction::Set {
+                                                scope,
+                                                direction,
+                                                index,
+                                                position: value,
+                                            })
+                                        },
+                                    ))
+                                    .push(
+                                        button(match direction {
+                                            GuidelineDirection::X => "X",
+                                            GuidelineDirection::Y => "Y",
+                                        })
+                                        .style(iced::widget::button::subtle)
+                                        .on_press(
+                                            Message::SetGuideline(match direction {
+                                                GuidelineDirection::X => {
+                                                    GuidelineAction::MakeY { scope, index }
+                                                }
+                                                GuidelineDirection::Y => {
+                                                    GuidelineAction::MakeX { scope, index }
+                                                }
+                                            }),
+                                        ),
+                                    )
+                                    .push(
+                                        button(match scope {
+                                            GuidelineScope::Global => "G",
+                                            GuidelineScope::Local => "g",
+                                        })
+                                        .on_press(
+                                            Message::SetGuideline(match scope {
+                                                GuidelineScope::Global => {
+                                                    GuidelineAction::MakeLocal { direction, index }
+                                                }
+                                                GuidelineScope::Local => {
+                                                    GuidelineAction::MakeGlobal { direction, index }
+                                                }
+                                            }),
+                                        ),
+                                    )
+                                    .push(button("×").style(iced::widget::button::danger).on_press(
+                                        Message::SetGuideline(GuidelineAction::Remove {
+                                            scope,
+                                            direction,
+                                            index,
+                                        }),
+                                    ))
+                                    .into()
+                            })
+                        }),
+                    )
+                    .push(
+                        button("Add guideline")
+                            .style(iced::widget::button::subtle)
+                            .on_press(Message::SetGuideline(GuidelineAction::Create)),
+                    ),
             );
 
         let toolbar = Row::new()
@@ -194,9 +355,11 @@ impl Editor {
                     Column::new()
                         .push(toolbar)
                         .push(
-                            GlyphEditor::new(glyph)
+                            GlyphEditor::new(glyph, &font.metrics)
                                 .scale(self.scale)
                                 .offset(self.offset)
+                                .guidelines(font.metrics.guidelines.clone())
+                                .guidelines(glyph.guidelines.clone())
                                 .on_scale(|scale| Message::Private(PrivateMessage::SetScale(scale)))
                                 .on_pan(|offset| {
                                     Message::Private(PrivateMessage::SetOffset(offset))

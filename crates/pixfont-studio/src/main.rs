@@ -3,7 +3,7 @@
 
 use std::{ffi::OsStr, path::PathBuf};
 
-use iced::{Element, Font, Pixels, Settings, Task, font, widget::Column, window};
+use iced::{Element, Pixels, Settings, Task, widget::Column, window};
 use rfd::AsyncFileDialog;
 
 pub mod ui;
@@ -21,10 +21,10 @@ fn main() -> iced::Result {
         .font(RAZZA_SANS_REGULAR_TTF)
         .font(RAZZA_SANS_BOLD_TTF)
         .settings(Settings {
-            default_font: Font {
-                family: font::Family::Name("Razza Sans"),
-                ..Default::default()
-            },
+            // default_font: Font {
+            //     family: font::Family::Name("Razza Sans"),
+            //     ..Default::default()
+            // },
             default_text_size: Pixels::from(13.0),
             ..Default::default()
         })
@@ -240,6 +240,195 @@ impl Application {
                 ui::view::editor::Message::Private(message) => {
                     self.editor.update(message).map(Message::Editor)
                 }
+                ui::view::editor::Message::SetGlyphProp(glyph_prop) => {
+                    let glyph_name = self
+                        .selected_glyph
+                        .as_ref()
+                        .expect("bug: no selected glyph");
+
+                    let glyph = self
+                        .project
+                        .glyphs
+                        .get_mut(glyph_name)
+                        .expect("bug: selected glyph does not exist");
+
+                    match glyph_prop {
+                        ui::view::editor::GlyphProp::Advance(value) => glyph.advance = value,
+
+                        // TODO: the ones below should probably be moved elsewhere
+                        ui::view::editor::GlyphProp::Ascender(value) => {
+                            self.project.metrics.ascender = value
+                        }
+                        ui::view::editor::GlyphProp::Descender(value) => {
+                            self.project.metrics.descender = value
+                        }
+                        ui::view::editor::GlyphProp::CapHeight(value) => {
+                            self.project.metrics.cap_height = value
+                        }
+                        ui::view::editor::GlyphProp::XHeight(value) => {
+                            self.project.metrics.x_height = value
+                        }
+                    };
+                    Task::none()
+                }
+                ui::view::editor::Message::SetGuideline(guideline_action) => match guideline_action
+                {
+                    ui::view::editor::GuidelineAction::Create => {
+                        let glyph_name = self
+                            .selected_glyph
+                            .as_ref()
+                            .expect("bug: no selected glyph");
+                        let glyph = self
+                            .project
+                            .glyphs
+                            .get_mut(glyph_name)
+                            .expect("bug: selected glyph does not exist");
+
+                        glyph.guidelines.x.push(pixfont::Guideline {
+                            name: "".to_string(),
+                            position: 16,
+                        });
+
+                        Task::none()
+                    }
+                    ui::view::editor::GuidelineAction::Rename {
+                        scope,
+                        direction,
+                        index,
+                        name,
+                    } => {
+                        let scope = match scope {
+                            ui::view::editor::GuidelineScope::Global => {
+                                &mut self.project.metrics.guidelines
+                            }
+                            ui::view::editor::GuidelineScope::Local => {
+                                let glyph_name = self
+                                    .selected_glyph
+                                    .as_ref()
+                                    .expect("bug: no selected glyph");
+                                let glyph = self
+                                    .project
+                                    .glyphs
+                                    .get_mut(glyph_name)
+                                    .expect("bug: selected glyph does not exist");
+
+                                &mut glyph.guidelines
+                            }
+                        };
+
+                        let direction = match direction {
+                            ui::view::editor::GuidelineDirection::X => &mut scope.x,
+                            ui::view::editor::GuidelineDirection::Y => &mut scope.y,
+                        };
+
+                        let guideline =
+                            direction.get_mut(index).expect("bug: index does not exist");
+
+                        guideline.name = name;
+                        Task::none()
+                    }
+                    ui::view::editor::GuidelineAction::Set {
+                        scope,
+                        direction,
+                        index,
+                        position,
+                    } => {
+                        let scope = match scope {
+                            ui::view::editor::GuidelineScope::Global => {
+                                &mut self.project.metrics.guidelines
+                            }
+                            ui::view::editor::GuidelineScope::Local => {
+                                let glyph_name = self
+                                    .selected_glyph
+                                    .as_ref()
+                                    .expect("bug: no selected glyph");
+                                let glyph = self
+                                    .project
+                                    .glyphs
+                                    .get_mut(glyph_name)
+                                    .expect("bug: selected glyph does not exist");
+
+                                &mut glyph.guidelines
+                            }
+                        };
+
+                        let direction = match direction {
+                            ui::view::editor::GuidelineDirection::X => &mut scope.x,
+                            ui::view::editor::GuidelineDirection::Y => &mut scope.y,
+                        };
+
+                        let guideline =
+                            direction.get_mut(index).expect("bug: index does not exist");
+
+                        guideline.position = position;
+                        Task::none()
+                    }
+                    ui::view::editor::GuidelineAction::Remove {
+                        scope: _,
+                        direction: _,
+                        index: _name,
+                    } => todo!(),
+                    ui::view::editor::GuidelineAction::MakeGlobal {
+                        direction: _,
+                        index: _,
+                    } => {
+                        todo!();
+                        // Task::none()
+                    }
+                    ui::view::editor::GuidelineAction::MakeLocal {
+                        direction: _,
+                        index: _,
+                    } => {
+                        todo!();
+                        // Task::none()
+                    }
+                    ui::view::editor::GuidelineAction::MakeX { scope, index } => {
+                        let scope = match scope {
+                            ui::view::editor::GuidelineScope::Global => {
+                                &mut self.project.metrics.guidelines
+                            }
+                            ui::view::editor::GuidelineScope::Local => {
+                                let glyph_name = self
+                                    .selected_glyph
+                                    .as_ref()
+                                    .expect("bug: no selected glyph");
+                                let glyph = self
+                                    .project
+                                    .glyphs
+                                    .get_mut(glyph_name)
+                                    .expect("bug: selected glyph does not exist");
+
+                                &mut glyph.guidelines
+                            }
+                        };
+
+                        scope.x.push(scope.y.remove(index));
+                        Task::none()
+                    }
+                    ui::view::editor::GuidelineAction::MakeY { scope, index } => {
+                        let scope = match scope {
+                            ui::view::editor::GuidelineScope::Global => {
+                                &mut self.project.metrics.guidelines
+                            }
+                            ui::view::editor::GuidelineScope::Local => {
+                                let glyph_name = self
+                                    .selected_glyph
+                                    .as_ref()
+                                    .expect("bug: no selected glyph");
+                                let glyph = self
+                                    .project
+                                    .glyphs
+                                    .get_mut(glyph_name)
+                                    .expect("bug: selected glyph does not exist");
+
+                                &mut glyph.guidelines
+                            }
+                        };
+
+                        scope.y.push(scope.x.remove(index));
+                        Task::none()
+                    }
+                },
             },
             Message::Settings(message) => match message {
                 ui::view::settings::Message::Private(message) => {
@@ -259,7 +448,7 @@ impl Application {
                     .map(Message::Directory),
                 ui::topbar::View::Edit => self
                     .editor
-                    .view(&self.project, &self.selected_glyph)
+                    .view(&self.project, self.selected_glyph.as_ref())
                     .map(Message::Editor),
                 ui::topbar::View::Settings => self.settings.view().map(Message::Settings),
             })

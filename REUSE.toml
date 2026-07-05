@@ -24,7 +24,14 @@ SPDX-FileCopyrightText = "2026 Rareș Nistor"
 
 # documentation
 [[annotations]]
-path = ["docs/**/*", "README.md", "CONTRIBUTING.md", "AGENTS.md", "CLAUDE.md"]
+path = [
+    "docs/**/*",
+    "README.md",
+    "CONTRIBUTING.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "logo.png",
+]
 precedence = "override"
 SPDX-License-Identifier = "CC-BY-SA-4.0"
 SPDX-FileCopyrightText = "2026 Rareș Nistor"

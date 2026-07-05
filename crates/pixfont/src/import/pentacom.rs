@@ -6,7 +6,7 @@ use std::io::read_to_string;
 use glifnames::{AGLFN, GlyphName};
 use json::JsonValue::{self};
 
-use crate::{Font, Glyph, Point, import::ImportError};
+use crate::{Font, Glyph, Guideline, Guidelines, Metrics, Point, import::ImportError};
 
 pub const GLYPH_HEIGHT: usize = 16;
 pub const GLYPH_WIDTH_MAX: usize = 16;
@@ -23,7 +23,23 @@ pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
         Err(error) => return Err(ImportError::Misc(Box::new(error))),
     };
 
-    let mut font = Font::default();
+    let mut font = Font {
+        metrics: Metrics {
+            ascender: 12,
+            descender: -4,
+            cap_height: 9,
+            x_height: 8,
+            guidelines: Guidelines {
+                x: vec![Guideline {
+                    name: "bearing".into(),
+                    position: -2,
+                }],
+                y: Default::default(),
+            },
+            ..Default::default()
+        },
+        ..Default::default()
+    };
 
     let mut monospace_flag = false;
     let mut monospace_width = 0u32;
@@ -134,6 +150,7 @@ fn try_parse_glyph(key: &str, value: &JsonValue, font: &mut Font) -> Result<bool
         }
     }
 
+    glyph.advance = glyph.pixels.rect().right() as u32;
     font.add_glyph_and_mapping(codepoint, &AGLFN::glyph_name(codepoint), glyph);
 
     Ok(true)

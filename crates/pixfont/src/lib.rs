@@ -124,7 +124,7 @@ pub struct Metrics {
     pub mono_advance: Option<u32>,
 
     /// Guidelines appearing across all glyphs.
-    pub guideline: Guidelines,
+    pub guidelines: Guidelines,
 }
 
 impl Metrics {
@@ -159,7 +159,7 @@ pub struct Glyph {
     pub advance: u32,
 
     /// Guidelines for this glyph.
-    pub guideline: Guidelines,
+    pub guidelines: Guidelines,
 
     /// Additional information for exporters.
     pub extra: IndexMap<String, String>,
@@ -301,7 +301,7 @@ impl Rect {
 
     pub fn with_points(p0: Point, p1: Point) -> Self {
         let x0 = min(p0.x, p1.x);
-        let y0 = min(p0.y, p0.y);
+        let y0 = min(p0.y, p1.y);
         let x1 = max(p0.x, p1.x);
         let y1 = max(p0.y, p1.y);
 
