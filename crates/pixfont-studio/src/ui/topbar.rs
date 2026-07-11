@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
-use std::fmt::Display;
-
 use iced::{
     Element, Length,
     widget::{Button, Column, Container, Row, Text},
@@ -32,59 +30,6 @@ pub enum View {
     Glyphs,
     Edit,
     Settings,
-}
-
-// TODO: move to core module when export is implemented
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ExportType {
-    /// Pentacom BitFontMaker2 JSON
-    ///
-    /// https://www.pentacom.jp/pentacom/bitfontmaker2/
-    Pentacom,
-
-    /// Adobe Glyph Bitmap Distribution Format (BDF)
-    Bdf,
-
-    /// Portable Compiled Format
-    ///
-    /// https://fontforge.org/docs/techref/pcf-format.html
-    Pcf,
-
-    /// FontForge project
-    ///
-    /// https://fontforge.org/
-    FontForge,
-
-    /// TrueType format
-    ///
-    /// - https://en.wikipedia.org/wiki/TrueType
-    /// - https://developer.apple.com/fonts/TrueType-Reference-Manual/
-    Ttf,
-
-    /// Windows and OS/2 bitmap font format
-    ///
-    /// - https://web.archive.org/web/20080115184921/http://support.microsoft.com/kb/65123
-    /// - https://web.archive.org/web/20120312000908/http://www.csn.ul.ie/%7Ecaolan/publink/winresdump/winresdump/doc/resfmt.txt
-    Fon,
-
-    /// AngelCode BMFont format (PNG + altas)
-    ///
-    /// - https://angelcode.com/products/bmfont/
-    Bmf,
-}
-
-impl Display for ExportType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            ExportType::Pentacom => "Pentacom BitFontMaker2™ (.json)",
-            ExportType::Bdf => "BDF (.bdf)",
-            ExportType::Pcf => "X11/PCF (.pcf)",
-            ExportType::FontForge => "FontForge project (.zip)",
-            ExportType::Ttf => "TrueType (.ttf)",
-            ExportType::Fon => "Windows bitmap font (.fon)",
-            ExportType::Bmf => "AngelCode BMFont (.fnt + .json)",
-        })
-    }
 }
 
 impl Default for Topbar {

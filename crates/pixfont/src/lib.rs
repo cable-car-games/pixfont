@@ -153,6 +153,8 @@ impl CodepointMapping {
 
 #[derive(Debug, Clone, Default)]
 pub struct Glyph {
+    pub name: String,
+
     pub pixels: Pixels,
 
     /// How much space to reserve for this glyph.

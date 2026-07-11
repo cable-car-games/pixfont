@@ -6,6 +6,7 @@ use iced::{
     widget::{Button, Column, Container, Row, Scrollable, Space, Text, button, text, text_input},
 };
 use iced_aw::number_input;
+use pixfont::{Guideline, Guidelines};
 
 use crate::{
     settings::Settings,
@@ -20,13 +21,6 @@ pub struct Editor {
     scale: f32,
     offset: Vector<f32>,
     tool: Tool,
-}
-
-#[derive(Debug, Clone)]
-pub enum Message {
-    Private(PrivateMessage),
-    SetGlyphProp(GlyphProp),
-    SetGuideline(GuidelineAction),
 }
 
 #[derive(Debug, Clone)]
@@ -98,10 +92,13 @@ pub enum GuidelineDirection {
 }
 
 #[derive(Debug, Clone)]
-pub enum PrivateMessage {
+#[allow(clippy::enum_variant_names)]
+pub enum Message {
     SetScale(f32),
     SetOffset(Vector<f32>),
     SetTool(Tool),
+    SetGlyphProp(GlyphProp),
+    SetGuideline(GuidelineAction),
 }
 
 impl Default for Editor {
@@ -316,7 +313,7 @@ impl Editor {
                         ]
                         .map(|(tool, icon, _name)| {
                             Button::new(icon.as_svg())
-                                .on_press(Message::Private(PrivateMessage::SetTool(tool)))
+                                .on_press(Message::SetTool(tool))
                                 .style(if tool == self.tool {
                                     iced::widget::button::primary
                                 } else {
@@ -363,10 +360,8 @@ impl Editor {
                                 .guidelines(glyph.guidelines.clone())
                                 .tool(self.tool)
                                 .colors(settings.appearance.editor)
-                                .on_scale(|scale| Message::Private(PrivateMessage::SetScale(scale)))
-                                .on_pan(|offset| {
-                                    Message::Private(PrivateMessage::SetOffset(offset))
-                                }),
+                                .on_scale(Message::SetScale)
+                                .on_pan(Message::SetOffset),
                         )
                         .spacing(4),
                 )
@@ -376,20 +371,146 @@ impl Editor {
             .into()
     }
 
-    pub fn update(&mut self, message: PrivateMessage) -> Task<Message> {
+    pub fn update(
+        &mut self,
+        message: Message,
+        font: &mut pixfont::Font,
+        glyph: Option<&String>,
+    ) -> Task<Message> {
+        let glyph = glyph.expect("bug: no glyph selected");
+        let glyph = font
+            .glyphs
+            .get_mut(glyph)
+            .expect("bug: glyph does not exist");
+
         match message {
-            PrivateMessage::SetScale(scale) => {
+            Message::SetScale(scale) => {
                 self.scale = scale;
                 Task::none()
             }
-            PrivateMessage::SetOffset(offset) => {
+
+            Message::SetOffset(offset) => {
                 self.offset = offset;
                 Task::none()
             }
-            PrivateMessage::SetTool(tool) => {
+
+            Message::SetTool(tool) => {
                 self.tool = tool;
                 Task::none()
             }
+
+            Message::SetGlyphProp(glyph_prop) => {
+                match glyph_prop {
+                    GlyphProp::Advance(value) => glyph.advance = value,
+
+                    // TODO: the ones below should probably be moved elsewhere
+                    GlyphProp::Ascender(value) => font.metrics.ascender = value,
+                    GlyphProp::Descender(value) => font.metrics.descender = value,
+                    GlyphProp::CapHeight(value) => font.metrics.cap_height = value,
+                    GlyphProp::XHeight(value) => font.metrics.x_height = value,
+                };
+                Task::none()
+            }
+
+            Message::SetGuideline(guideline_action) => match guideline_action {
+                GuidelineAction::Create => {
+                    glyph.guidelines.x.push(pixfont::Guideline {
+                        name: "".to_string(),
+                        position: 16,
+                    });
+
+                    Task::none()
+                }
+
+                GuidelineAction::Rename {
+                    scope,
+                    direction,
+                    index,
+                    name,
+                } => {
+                    let scope = match scope {
+                        GuidelineScope::Global => &mut font.metrics.guidelines,
+                        GuidelineScope::Local => &mut glyph.guidelines,
+                    };
+
+                    let guideline = direction_of(scope, direction)
+                        .get_mut(index)
+                        .expect("bug: index does not exist");
+
+                    guideline.name = name;
+                    Task::none()
+                }
+                GuidelineAction::Set {
+                    scope,
+                    direction,
+                    index,
+                    position,
+                } => {
+                    let scope = match scope {
+                        GuidelineScope::Global => &mut font.metrics.guidelines,
+                        GuidelineScope::Local => &mut glyph.guidelines,
+                    };
+
+                    let guideline = direction_of(scope, direction)
+                        .get_mut(index)
+                        .expect("bug: index does not exist");
+
+                    guideline.position = position;
+                    Task::none()
+                }
+
+                GuidelineAction::Remove {
+                    scope,
+                    direction,
+                    index,
+                } => {
+                    let scope = match scope {
+                        GuidelineScope::Global => &mut font.metrics.guidelines,
+                        GuidelineScope::Local => &mut glyph.guidelines,
+                    };
+
+                    direction_of(scope, direction).remove(index);
+                    Task::none()
+                }
+
+                GuidelineAction::MakeGlobal { direction, index } => {
+                    direction_of(&mut font.metrics.guidelines, direction)
+                        .push(direction_of(&mut glyph.guidelines, direction).remove(index));
+                    Task::none()
+                }
+
+                GuidelineAction::MakeLocal { direction, index } => {
+                    direction_of(&mut glyph.guidelines, direction)
+                        .push(direction_of(&mut font.metrics.guidelines, direction).remove(index));
+                    Task::none()
+                }
+
+                GuidelineAction::MakeX { scope, index } => {
+                    let scope = match scope {
+                        GuidelineScope::Global => &mut font.metrics.guidelines,
+                        GuidelineScope::Local => &mut glyph.guidelines,
+                    };
+
+                    scope.x.push(scope.y.remove(index));
+                    Task::none()
+                }
+                GuidelineAction::MakeY { scope, index } => {
+                    let scope = match scope {
+                        GuidelineScope::Global => &mut font.metrics.guidelines,
+                        GuidelineScope::Local => &mut glyph.guidelines,
+                    };
+
+                    scope.y.push(scope.x.remove(index));
+                    Task::none()
+                }
+            },
         }
+    }
+}
+
+fn direction_of(guidelines: &mut Guidelines, direction: GuidelineDirection) -> &mut Vec<Guideline> {
+    match direction {
+        GuidelineDirection::X => &mut guidelines.x,
+        GuidelineDirection::Y => &mut guidelines.y,
     }
 }

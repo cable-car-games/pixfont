@@ -12,7 +12,7 @@ use iced::{
     keyboard::{Key, key},
 };
 
-use crate::settings::{Appearance, EditorColors};
+use crate::settings::EditorColors;
 
 pub struct GlyphEditor<'state, 'glyph, Message> {
     glyph: &'glyph pixfont::Glyph,
@@ -46,8 +46,8 @@ struct State {
 
 #[derive(Debug, Default)]
 pub struct Delta {
-    pub add: HashSet<Point>,
-    pub remove: HashSet<Point>,
+    pub _add: HashSet<Point>,
+    pub _remove: HashSet<Point>,
 }
 
 impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
