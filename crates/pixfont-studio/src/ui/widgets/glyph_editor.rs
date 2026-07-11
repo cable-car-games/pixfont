@@ -10,6 +10,7 @@ use iced::{
         renderer::{self, Quad},
     },
     keyboard::{Key, key},
+    mouse::Interaction,
 };
 
 use crate::settings::EditorColors;
@@ -23,6 +24,8 @@ pub struct GlyphEditor<'state, 'glyph, Message> {
     guidelines: Vec<pixfont::Guidelines>,
     on_scale: Option<Box<dyn Fn(f32) -> Message + 'state>>,
     on_pan: Option<Box<dyn Fn(Vector<f32>) -> Message + 'state>>,
+    on_tool: Option<Box<dyn Fn(Tool) -> Message + 'state>>,
+    on_apply: Option<Box<dyn Fn(Delta) -> Message + 'state>>,
     colors: EditorColors,
 }
 
@@ -38,16 +41,91 @@ pub enum Tool {
 
 #[derive(Debug, Default)]
 struct State {
-    will_pan: bool,
-    pan_start: Option<Vector<f32>>,
-    _is_pressed: bool,
-    _delta: Delta,
+    pointer: ToolState,
+    pan_replaced: Option<Tool>,
 }
 
 #[derive(Debug, Default)]
+pub enum ToolState {
+    #[default]
+    None,
+    Pen {
+        delta: Delta,
+    },
+    Line {
+        start: pixfont::Point,
+        end: pixfont::Point,
+    },
+    Rectangle {
+        start: pixfont::Point,
+        end: pixfont::Point,
+        fill: bool,
+    },
+    Fill {
+        point: pixfont::Point,
+    },
+    Eraser {
+        delta: Delta,
+    },
+    Pan {
+        pan_start: Vector<f32>,
+        delta: Vector<f32>,
+    },
+}
+
+impl ToolState {
+    pub fn delta(&self) -> Delta {
+        match self {
+            ToolState::None => Default::default(),
+            ToolState::Pen { delta } => delta.clone(),
+            ToolState::Line { start, end } => {
+                let mut delta = Delta::default();
+                bresenham(*start, *end, |point| {
+                    delta.add.insert(point);
+                });
+                delta
+            }
+            ToolState::Rectangle { start, end, fill } => {
+                let mut delta = Delta::default();
+
+                let min_x = start.x.min(end.x);
+                let min_y = start.y.min(end.y);
+                let max_x = start.x.max(end.x);
+                let max_y = start.y.max(end.y);
+
+                if *fill {
+                    for x in min_x..=max_x {
+                        for y in min_y..=max_y {
+                            delta.add.insert(pixfont::Point::new(x, y));
+                        }
+                    }
+                } else {
+                    for x in min_x..=max_x {
+                        delta.add.insert(pixfont::Point { x, y: start.y });
+                        delta.add.insert(pixfont::Point { x, y: end.y });
+                    }
+                    for y in min_y..=max_y {
+                        delta.add.insert(pixfont::Point { x: start.x, y });
+                        delta.add.insert(pixfont::Point { x: end.x, y });
+                    }
+                }
+
+                delta
+            }
+            ToolState::Fill { point } => {
+                _ = point;
+                todo!()
+            }
+            ToolState::Eraser { delta } => delta.clone(),
+            ToolState::Pan { .. } => Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct Delta {
-    pub _add: HashSet<Point>,
-    pub _remove: HashSet<Point>,
+    pub add: HashSet<pixfont::Point>,
+    pub remove: HashSet<pixfont::Point>,
 }
 
 impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
@@ -58,8 +136,10 @@ impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
             scale: 5.0,
             offset: Vector::new(0.0, 0.0),
             tool: Tool::Pen,
-            on_scale: None,
-            on_pan: None,
+            on_scale: Default::default(),
+            on_pan: Default::default(),
+            on_tool: Default::default(),
+            on_apply: Default::default(),
             guidelines: Vec::new(),
             colors: Default::default(),
         }
@@ -97,6 +177,16 @@ impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
 
     pub fn on_pan(mut self, on_pan: impl Fn(Vector<f32>) -> Message + 'state) -> Self {
         self.on_pan = Some(Box::new(on_pan));
+        self
+    }
+
+    pub fn on_tool(mut self, on_tool: impl Fn(Tool) -> Message + 'state) -> Self {
+        self.on_tool = Some(Box::new(on_tool));
+        self
+    }
+
+    pub fn on_apply(mut self, on_apply: impl Fn(Delta) -> Message + 'state) -> Self {
+        self.on_apply = Some(Box::new(on_apply));
         self
     }
 
@@ -170,7 +260,7 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
 
     fn draw(
         &self,
-        _tree: &iced::advanced::widget::Tree,
+        tree: &iced::advanced::widget::Tree,
         renderer: &mut Renderer,
         _theme: &Theme,
         _style: &iced::advanced::renderer::Style,
@@ -178,7 +268,15 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
         _cursor: iced::advanced::mouse::Cursor,
         _viewport: &iced::Rectangle,
     ) {
+        let state = tree.state.downcast_ref::<State>();
+
         let bounds = layout.bounds();
+        let offset = self.offset
+            + match &state.pointer {
+                ToolState::Pan { delta, .. } => *delta,
+                _ => Vector::ZERO,
+            };
+
         Draw::with(bounds, renderer, |draw| {
             draw.renderer.fill_quad(
                 Quad {
@@ -189,7 +287,14 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
             );
 
             // pixels
-            for pixel in self.glyph.pixels.pixels() {
+            let delta = state.pointer.delta();
+            for pixel in self
+                .glyph
+                .pixels
+                .pixels()
+                .chain(delta.add.iter())
+                .filter(|item| !delta.remove.contains(*item))
+            {
                 if let Some(origin) = self.to_iced_rect(Some(*pixel), &bounds) {
                     draw.renderer.fill_quad(
                         Quad {
@@ -207,10 +312,10 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                 .gridlines
                 .map_or(GRIDLINE_COLOR, Into::into)
                 .into();
-            let mut gx = bounds.x + self.offset.x % self.scale + (bounds.width / 2.0) % self.scale
+            let mut gx = bounds.x + offset.x % self.scale + (bounds.width / 2.0) % self.scale
                 - self.scale * 0.5;
             let mut gy = bounds.y
-                + self.offset.y % self.scale
+                + offset.y % self.scale
                 + (bounds.height / 2.0) % (self.scale)
                 + self.scale * 0.5;
             while gx <= bounds.x + bounds.width {
@@ -229,14 +334,14 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
 
                 for pixfont::Guideline { position, .. } in &guidelines.x {
                     draw.vline(
-                        bounds.center_x() + self.offset.x - (0.5 * self.scale)
+                        bounds.center_x() + offset.x - (0.5 * self.scale)
                             + ((*position as f32) * self.scale),
                     );
                 }
 
                 for pixfont::Guideline { position, .. } in &guidelines.y {
                     draw.hline(
-                        bounds.center_y() + self.offset.y + (0.5 * self.scale)
+                        bounds.center_y() + offset.y + (0.5 * self.scale)
                             - ((*position as f32) * self.scale),
                     );
                 }
@@ -245,30 +350,30 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
             // metrics lines
             draw.color = self.colors.metrics.map_or(METRICS_COLOR, Into::into).into();
             draw.vline(
-                bounds.center_x() + self.offset.x - self.scale / 2.0
+                bounds.center_x() + offset.x - self.scale / 2.0
                     + (self.glyph.advance as f32) * self.scale,
             );
             draw.hline(
-                bounds.center_y() + self.offset.y + self.scale / 2.0
+                bounds.center_y() + offset.y + self.scale / 2.0
                     - (self.metrics.ascender as f32) * self.scale,
             );
             draw.hline(
-                bounds.center_y() + self.offset.y + self.scale / 2.0
+                bounds.center_y() + offset.y + self.scale / 2.0
                     - (self.metrics.descender as f32) * self.scale,
             );
             draw.hline(
-                bounds.center_y() + self.offset.y + self.scale / 2.0
+                bounds.center_y() + offset.y + self.scale / 2.0
                     - (self.metrics.cap_height as f32) * self.scale,
             );
             draw.hline(
-                bounds.center_y() + self.offset.y + self.scale / 2.0
+                bounds.center_y() + offset.y + self.scale / 2.0
                     - (self.metrics.x_height as f32) * self.scale,
             );
 
             // origin lines
             draw.color = self.colors.origin.map_or(ORIGIN_COLOR, Into::into).into();
-            draw.vline(bounds.center_x() + self.offset.x - self.scale / 2.0);
-            draw.hline(bounds.center_y() + self.offset.y + self.scale / 2.0);
+            draw.vline(bounds.center_x() + offset.x - self.scale / 2.0);
+            draw.hline(bounds.center_y() + offset.y + self.scale / 2.0);
         });
     }
 
@@ -292,14 +397,20 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
 
         let state = _tree.state.downcast_ref::<State>();
 
-        if state.will_pan {
-            return match state.pan_start {
-                Some(_) => iced::advanced::mouse::Interaction::Grabbing,
-                None => iced::advanced::mouse::Interaction::Grab,
-            };
+        match self.tool {
+            Tool::Pen => Interaction::Crosshair,
+            Tool::Line => Interaction::Crosshair,
+            Tool::Rectangle => Interaction::Crosshair,
+            Tool::Fill => Interaction::Crosshair,
+            Tool::Eraser => Interaction::Crosshair,
+            Tool::Pan => {
+                if let ToolState::Pan { .. } = state.pointer {
+                    Interaction::Grabbing
+                } else {
+                    Interaction::Grab
+                }
+            }
         }
-
-        iced::advanced::mouse::Interaction::Crosshair
     }
 
     fn update(
@@ -313,7 +424,6 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
         shell: &mut iced::advanced::Shell<'_, Message>,
         _viewport: &Rectangle,
     ) {
-        //println!("{:?}", event);
         match event {
             iced::Event::Keyboard(event) => match event {
                 iced::keyboard::Event::KeyPressed {
@@ -323,14 +433,24 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                     location: _location,
                     modifiers: _modifiers,
                     text: _text,
-                    repeat: _repeat,
+                    repeat,
                 } => {
                     let state = tree.state.downcast_mut::<State>();
 
                     if *key == Key::Named(key::Named::Space) {
-                        state.will_pan = true;
+                        if *repeat {
+                            return;
+                        }
+
+                        state.pan_replaced = Some(self.tool);
+                        if let Some(on_tool) = &self.on_tool {
+                            shell.publish(on_tool(Tool::Pan));
+                        }
+
+                        shell.capture_event();
                     }
                 }
+
                 iced::keyboard::Event::KeyReleased {
                     key,
                     modified_key: _modified_key,
@@ -341,61 +461,130 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                     let state = tree.state.downcast_mut::<State>();
 
                     if *key == Key::Named(key::Named::Space) {
-                        state.will_pan = false;
-                        state.pan_start = None;
+                        if let Some(on_tool) = &self.on_tool {
+                            shell.publish(on_tool(state.pan_replaced.unwrap_or(Tool::Pan)));
+                        }
+                        state.pan_replaced = None;
+                        shell.capture_event();
                     }
                 }
                 iced::keyboard::Event::ModifiersChanged(_modifiers) => {}
             },
+
             iced::Event::Mouse(event) => match event {
                 iced::mouse::Event::CursorEntered => {}
                 iced::mouse::Event::CursorLeft => {}
                 iced::mouse::Event::CursorMoved { position } => {
+                    let bounds = layout.bounds();
                     let state = tree.state.downcast_mut::<State>();
+                    let font_point = self.to_font_point(Some(*position), &bounds);
 
-                    if let Some(last_pan) = state.pan_start
-                        && let Some(on_pan) = &self.on_pan
-                    {
-                        let delta = *position - last_pan;
-                        let delta = Vector::new(delta.x, delta.y);
-                        shell.publish(on_pan(self.offset + delta));
+                    match &mut state.pointer {
+                        ToolState::None => {}
 
-                        state.pan_start = Some(Vector::new(position.x, position.y))
+                        ToolState::Pen { delta } => {
+                            let Some(font_point) = font_point else {
+                                return;
+                            };
+
+                            delta.add.insert(font_point);
+                            shell.request_redraw();
+                        }
+
+                        ToolState::Line { end, .. } => {
+                            if let Some(font_point) = font_point {
+                                *end = font_point;
+                                shell.request_redraw();
+                            };
+                        }
+
+                        ToolState::Rectangle { end, .. } => {
+                            if let Some(font_point) = font_point {
+                                *end = font_point;
+                            }
+                            shell.request_redraw();
+                        }
+
+                        ToolState::Fill { .. } => todo!(),
+
+                        ToolState::Eraser { delta } => {
+                            if let Some(font_point) = font_point {
+                                delta.remove.insert(font_point);
+                                shell.request_redraw();
+                            }
+                        }
+
+                        ToolState::Pan { pan_start, delta } => {
+                            let d = *position - *pan_start;
+                            *delta = Vector::new(d.x, d.y);
+                            shell.request_redraw();
+                        }
                     }
                 }
+
                 iced::mouse::Event::ButtonPressed(_button) => {
+                    let bounds = layout.bounds();
+                    if !cursor.is_over(bounds) {
+                        return;
+                    }
+
+                    let cursor_position = cursor.position().unwrap();
+                    let font_point = self.to_font_point(Some(cursor_position), &bounds);
+
                     let state = tree.state.downcast_mut::<State>();
 
-                    let bounds = layout.bounds();
+                    state.pointer = match self.tool {
+                        Tool::Pen => ToolState::Pen {
+                            delta: Default::default(),
+                        },
+                        Tool::Line => ToolState::Line {
+                            start: font_point.unwrap(),
+                            end: font_point.unwrap(),
+                        },
+                        Tool::Rectangle => ToolState::Rectangle {
+                            start: font_point.unwrap(),
+                            end: font_point.unwrap(),
+                            fill: false,
+                        },
+                        Tool::Fill => ToolState::Fill {
+                            point: font_point.unwrap(),
+                        },
+                        Tool::Eraser => ToolState::Eraser {
+                            delta: Default::default(),
+                        },
+                        Tool::Pan => ToolState::Pan {
+                            pan_start: Vector::new(cursor_position.x, cursor_position.y),
+                            delta: Vector::ZERO,
+                        },
+                    };
 
-                    if cursor.is_over(bounds) {
-                        if state.will_pan
-                            && let Some(position) = cursor.position()
-                        {
-                            state.pan_start = Some(Vector::new(position.x, position.y));
-                            return;
-                        }
-
-                        if let Some(point) = self.to_font_point(cursor.position(), &bounds) {
-                            print!("clicked {:?}", point);
-                        }
-                    }
+                    shell.capture_event();
 
                     // TODO: dispatch based on what needs to be done
                 }
+
                 iced::mouse::Event::ButtonReleased(_button) => {
                     let state = tree.state.downcast_mut::<State>();
 
-                    if let Some(last_pan) = state.pan_start
-                        && let Some(position) = cursor.position()
-                        && let Some(on_pan) = &self.on_pan
-                    {
-                        let delta = position - last_pan;
-                        let delta = Vector::new(delta.x, delta.y);
-                        shell.publish(on_pan(self.offset + delta));
-                    }
-                    state.pan_start = None;
+                    match &state.pointer {
+                        ToolState::None => return,
+
+                        ToolState::Pan { delta, .. } => {
+                            let on_pan = self.on_pan.as_ref().unwrap();
+                            shell.publish(on_pan(self.offset + *delta));
+                        }
+
+                        _ => {
+                            if let Some(on_apply) = &self.on_apply {
+                                shell.publish(on_apply(state.pointer.delta()));
+                            }
+                        }
+                    };
+
+                    state.pointer = ToolState::None;
+                    shell.capture_event();
                 }
+
                 iced::mouse::Event::WheelScrolled { delta } => {
                     let y = match delta {
                         iced::mouse::ScrollDelta::Lines { x: _x, y } => *y,
@@ -485,5 +674,52 @@ impl<'draw, Renderer: renderer::Renderer> Draw<'draw, Renderer> {
             },
             self.color,
         );
+    }
+}
+
+fn bresenham(start: pixfont::Point, end: pixfont::Point, mut put: impl FnMut(pixfont::Point)) {
+    let dx = end.x - start.x;
+    let ax = 2 * if dx < 0 { -dx } else { dx };
+    let sx = if dx < 0 { -1 } else { 1 };
+
+    let dy = end.y - start.y;
+    let ay = 2 * if dy < 0 { -dy } else { dy };
+    let sy = if dy < 0 { -1 } else { 1 };
+
+    let mut x = start.x;
+    let mut y = start.y;
+
+    if ax > ay {
+        let mut d = ay - ax / 2;
+        loop {
+            put(pixfont::Point::new(x, y));
+            if x == end.x {
+                return;
+            }
+
+            if d >= 0 {
+                y += sy;
+                d -= ax;
+            }
+
+            x += sx;
+            d += ay;
+        }
+    } else {
+        let mut d = ax - ay / 2;
+        loop {
+            put(pixfont::Point::new(x, y));
+            if y == end.y {
+                return;
+            }
+
+            if d >= 0 {
+                x += sx;
+                d -= ay;
+            }
+
+            y += sy;
+            d += ax;
+        }
     }
 }

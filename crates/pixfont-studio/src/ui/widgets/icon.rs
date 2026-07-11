@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
 use iced::{
-    Length, Theme,
+    Theme,
     widget::{
         Svg,
         svg::{Handle, Style},
@@ -97,7 +97,8 @@ impl Icon {
 impl<'a> From<Icon> for Svg<'a> {
     fn from(icon: Icon) -> Self {
         Svg::new(Handle::from_memory(icon.svg_data()))
-            .width(Length::Shrink)
+            .width(16)
+            .height(16)
             .style(|theme: &Theme, _status| Style {
                 color: Some(theme.palette().text),
             })

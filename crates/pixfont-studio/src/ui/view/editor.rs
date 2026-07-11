@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
+use std::{collections::LinkedList, ops::Not};
+
 use iced::{
     Element, Length, Task, Vector,
+    alignment::Vertical,
     widget::{Button, Column, Container, Row, Scrollable, Space, Text, button, text, text_input},
 };
 use iced_aw::number_input;
-use pixfont::{Guideline, Guidelines};
+use pixfont::{Glyph, Guideline, Guidelines};
 
 use crate::{
     settings::Settings,
     ui::widgets::{
-        glyph_editor::{GlyphEditor, Tool},
+        glyph_editor::{Delta, GlyphEditor, Tool},
         icon::Icon,
         inspector,
     },
@@ -21,6 +24,26 @@ pub struct Editor {
     scale: f32,
     offset: Vector<f32>,
     tool: Tool,
+
+    undo_stack: LinkedList<Delta>,
+    redo_stack: LinkedList<Delta>,
+}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    Apply(Delta),
+    SetScale(f32),
+    SetOffset(Vector<f32>),
+    SetTool(Tool),
+    SetGlyphProp(GlyphProp),
+    SetGuideline(GuidelineAction),
+    Undo,
+    Redo,
+    Copy,
+    Paste,
+    ResetViewport,
+    ZoomIn,
+    ZoomOut,
 }
 
 #[derive(Debug, Clone)]
@@ -91,22 +114,18 @@ pub enum GuidelineDirection {
     Y,
 }
 
-#[derive(Debug, Clone)]
-#[allow(clippy::enum_variant_names)]
-pub enum Message {
-    SetScale(f32),
-    SetOffset(Vector<f32>),
-    SetTool(Tool),
-    SetGlyphProp(GlyphProp),
-    SetGuideline(GuidelineAction),
-}
+const SCALE_MIN: f32 = 2.0;
+const SCALE_MAX: f32 = 128.0;
+const DEFAULT_SCALE: f32 = 16.0;
 
 impl Default for Editor {
     fn default() -> Self {
         Self {
-            scale: 16.0,
+            scale: DEFAULT_SCALE,
             offset: Default::default(),
             tool: Tool::Pen,
+            undo_stack: LinkedList::new(),
+            redo_stack: LinkedList::new(),
         }
     }
 }
@@ -286,16 +305,28 @@ impl Editor {
                 Row::new()
                     .push(
                         Button::new(Icon::BiArrowCounterclockwise.as_svg())
-                            .style(iced::widget::button::subtle),
+                            .style(iced::widget::button::subtle)
+                            .on_press_maybe(
+                                self.undo_stack.is_empty().not().then_some(Message::Undo),
+                            ),
                     )
                     .push(
                         Button::new(Icon::BiArrowClockwise.as_svg())
-                            .style(iced::widget::button::subtle),
+                            .style(iced::widget::button::subtle)
+                            .on_press_maybe(
+                                self.redo_stack.is_empty().not().then_some(Message::Redo),
+                            ),
                     )
                     .push(Space::new())
-                    .push(Button::new(Icon::BiCopy.as_svg()).style(iced::widget::button::subtle))
                     .push(
-                        Button::new(Icon::BiClipboard.as_svg()).style(iced::widget::button::subtle),
+                        Button::new(Icon::BiCopy.as_svg())
+                            .style(iced::widget::button::subtle)
+                            .on_press(Message::Copy),
+                    )
+                    .push(
+                        Button::new(Icon::BiClipboard.as_svg())
+                            .style(iced::widget::button::subtle)
+                            .on_press(Message::Paste),
                     )
                     .spacing(4)
                     .width(Length::Fill),
@@ -327,17 +358,22 @@ impl Editor {
             .push(
                 Container::new(
                     Row::new()
+                        .align_y(Vertical::Center)
                         .push(
                             Button::new(Icon::BiBorderInner.as_svg())
-                                .style(iced::widget::button::subtle),
+                                .style(iced::widget::button::subtle)
+                                .on_press(Message::ResetViewport),
                         )
                         .push(
                             Button::new(Icon::BiZoomIn.as_svg())
-                                .style(iced::widget::button::subtle),
+                                .style(iced::widget::button::subtle)
+                                .on_press(Message::ZoomIn),
                         )
+                        .push(text(format!("{:.0}%", self.scale * 100.0)))
                         .push(
                             Button::new(Icon::BiZoomOut.as_svg())
-                                .style(iced::widget::button::subtle),
+                                .style(iced::widget::button::subtle)
+                                .on_press(Message::ZoomOut),
                         )
                         .spacing(4),
                 )
@@ -361,7 +397,9 @@ impl Editor {
                                 .tool(self.tool)
                                 .colors(settings.appearance.editor)
                                 .on_scale(Message::SetScale)
-                                .on_pan(Message::SetOffset),
+                                .on_pan(Message::SetOffset)
+                                .on_tool(Message::SetTool)
+                                .on_apply(Message::Apply),
                         )
                         .spacing(4),
                 )
@@ -384,8 +422,14 @@ impl Editor {
             .expect("bug: glyph does not exist");
 
         match message {
+            Message::Apply(delta) => {
+                self.undo_stack.push_back(delta.clone());
+                apply(glyph, &delta);
+                Task::none()
+            }
+
             Message::SetScale(scale) => {
-                self.scale = scale;
+                self.set_scale(scale);
                 Task::none()
             }
 
@@ -504,7 +548,61 @@ impl Editor {
                     Task::none()
                 }
             },
+
+            Message::Undo => {
+                let Some(delta) = self.undo_stack.pop_back() else {
+                    println!("empty undo stack");
+                    return Task::none();
+                };
+                self.redo_stack.push_back(delta.clone());
+
+                apply(
+                    glyph,
+                    &Delta {
+                        add: delta.remove,
+                        remove: delta.add,
+                    },
+                );
+
+                Task::none()
+            }
+
+            Message::Redo => {
+                let Some(delta) = self.redo_stack.pop_back() else {
+                    println!("empty redo stack");
+                    return Task::none();
+                };
+
+                apply(glyph, &delta);
+                self.undo_stack.push_back(delta);
+
+                Task::none()
+            }
+
+            Message::Copy => todo!(),
+
+            Message::Paste => todo!(),
+
+            Message::ResetViewport => {
+                self.offset = Default::default();
+                self.scale = DEFAULT_SCALE;
+                Task::none()
+            }
+
+            Message::ZoomIn => {
+                self.set_scale(self.scale * 2.0);
+                Task::none()
+            }
+
+            Message::ZoomOut => {
+                self.set_scale(self.scale / 2.0);
+                Task::none()
+            }
         }
+    }
+
+    fn set_scale(&mut self, scale: f32) {
+        self.scale = f32::clamp(scale, SCALE_MIN, SCALE_MAX);
     }
 }
 
@@ -513,4 +611,13 @@ fn direction_of(guidelines: &mut Guidelines, direction: GuidelineDirection) -> &
         GuidelineDirection::X => &mut guidelines.x,
         GuidelineDirection::Y => &mut guidelines.y,
     }
+}
+
+fn apply(glyph: &mut Glyph, delta: &Delta) {
+    delta.add.iter().for_each(|pixel| {
+        glyph.pixels.set(*pixel, true);
+    });
+    delta.remove.iter().for_each(|pixel| {
+        glyph.pixels.set(*pixel, false);
+    });
 }
