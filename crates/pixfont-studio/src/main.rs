@@ -229,12 +229,21 @@ impl Application {
                     self.selected_glyph = Some(glyph_name);
                     Task::none()
                 }
+
                 ui::view::directory::Message::AddGlyphsFromSet(set) => {
                     self.project
-                        .add_codepoints(&mut set.codepoints().iter().copied());
+                        .add_codepoints(set.codepoints().iter().copied());
                     self.pages
                         .directory
                         .update(ui::view::directory::Message::SetDropdown(Some(false)))
+                        .map(Message::Directory)
+                }
+
+                ui::view::directory::Message::SubmitBlock(block) => {
+                    self.project.add_codepoints(block.range.iter());
+                    self.pages
+                        .directory
+                        .update(ui::view::directory::Message::SubmitBlock(block))
                         .map(Message::Directory)
                 }
 

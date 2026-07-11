@@ -51,6 +51,7 @@ pub enum ToolState {
     None,
     Pen {
         delta: Delta,
+        last_point: pixfont::Point,
     },
     Line {
         start: pixfont::Point,
@@ -77,7 +78,7 @@ impl ToolState {
     pub fn delta(&self) -> Delta {
         match self {
             ToolState::None => Default::default(),
-            ToolState::Pen { delta } => delta.clone(),
+            ToolState::Pen { delta, .. } => delta.clone(),
             ToolState::Line { start, end } => {
                 let mut delta = Delta::default();
                 bresenham(*start, *end, |point| {
@@ -482,13 +483,14 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                     match &mut state.pointer {
                         ToolState::None => {}
 
-                        ToolState::Pen { delta } => {
-                            let Some(font_point) = font_point else {
-                                return;
+                        ToolState::Pen { delta, last_point } => {
+                            if let Some(font_point) = font_point {
+                                bresenham(*last_point, font_point, |point| {
+                                    delta.add.insert(point);
+                                });
+                                *last_point = font_point;
+                                shell.request_redraw();
                             };
-
-                            delta.add.insert(font_point);
-                            shell.request_redraw();
                         }
 
                         ToolState::Line { end, .. } => {
@@ -536,6 +538,7 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                     state.pointer = match self.tool {
                         Tool::Pen => ToolState::Pen {
                             delta: Default::default(),
+                            last_point: font_point.unwrap(),
                         },
                         Tool::Line => ToolState::Line {
                             start: font_point.unwrap(),
@@ -609,6 +612,7 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                     }
                 }
             },
+
             iced::Event::Window(_event) => {}
             iced::Event::Touch(_event) => {}
             iced::Event::InputMethod(_event) => {}
@@ -680,11 +684,9 @@ impl<'draw, Renderer: renderer::Renderer> Draw<'draw, Renderer> {
 fn bresenham(start: pixfont::Point, end: pixfont::Point, mut put: impl FnMut(pixfont::Point)) {
     let dx = end.x - start.x;
     let ax = 2 * if dx < 0 { -dx } else { dx };
-    let sx = if dx < 0 { -1 } else { 1 };
 
     let dy = end.y - start.y;
     let ay = 2 * if dy < 0 { -dy } else { dy };
-    let sy = if dy < 0 { -1 } else { 1 };
 
     let mut x = start.x;
     let mut y = start.y;
@@ -698,11 +700,11 @@ fn bresenham(start: pixfont::Point, end: pixfont::Point, mut put: impl FnMut(pix
             }
 
             if d >= 0 {
-                y += sy;
+                y += dy.signum();
                 d -= ax;
             }
 
-            x += sx;
+            x += dx.signum();
             d += ay;
         }
     } else {
@@ -714,11 +716,11 @@ fn bresenham(start: pixfont::Point, end: pixfont::Point, mut put: impl FnMut(pix
             }
 
             if d >= 0 {
-                x += sx;
+                x += dx.signum();
                 d -= ay;
             }
 
-            y += sy;
+            y += dy.signum();
             d += ax;
         }
     }

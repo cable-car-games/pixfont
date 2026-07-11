@@ -52,7 +52,7 @@ impl Font {
 
     pub fn add_glyphs_and_mappings(
         &mut self,
-        glyph_mappings: &mut impl Iterator<Item = (String, u32, Glyph)>,
+        glyph_mappings: impl Iterator<Item = (String, u32, Glyph)>,
     ) -> &mut Self {
         for (name, codepoint, glyph) in glyph_mappings {
             self.mappings
@@ -63,8 +63,8 @@ impl Font {
         self
     }
 
-    pub fn add_codepoints(&mut self, codepoints: &mut impl Iterator<Item = u32>) -> &mut Self {
-        self.add_glyphs_and_mappings(&mut codepoints.map(|codepoint| {
+    pub fn add_codepoints(&mut self, codepoints: impl Iterator<Item = u32>) -> &mut Self {
+        self.add_glyphs_and_mappings(codepoints.map(|codepoint| {
             (
                 AGLFN::glyph_name(codepoint).into(),
                 codepoint,

@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# SPDX-FileCopyrightText: 2026 Rareș Nistor
+
+[package]
+name = "ucd"
+version = "17.0.0"
+edition = "2024"
+
+[dependencies]
+ucd-macros = { path = "../ucd-macros" }

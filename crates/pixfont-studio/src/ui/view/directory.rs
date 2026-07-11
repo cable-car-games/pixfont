@@ -8,8 +8,14 @@ use iced::{
     widget::{Button, Column, Container, Grid, PickList, Row, Scrollable, Text, TextInput},
 };
 use iced_aw::{DropDown, drop_down::Alignment};
+use ucd::Block;
 
-use crate::ui::widgets::{icon::Icon, inspector};
+use crate::ui::{
+    view::directory::new_from_unicode::NewFromUnicode,
+    widgets::{icon::Icon, inspector},
+};
+
+mod new_from_unicode;
 
 #[derive(Default)]
 pub struct Directory {
@@ -17,6 +23,7 @@ pub struct Directory {
     order: DirectoryOrder,
 
     set_dropdown_shown: bool,
+    new_from_unicode: NewFromUnicode,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -66,6 +73,12 @@ pub enum Message {
 
     // glyph management
     AddGlyphsFromSet(pixfont::sets::GlyphSet),
+    AddGlyphsFromUnicodeBlock,
+
+    // unicode thing
+    CloseAddNewBlocks,
+    SelectBlock(Block),
+    SubmitBlock(Block),
 
     Noop,
 }
@@ -253,15 +266,21 @@ impl Directory {
                 iced::widget::button::subtle
             })
             .on_press(Message::SetDropdown(None)),
-            Container::new(Column::with_children(
-                pixfont::sets::DEFINED_GLYPH_SETS.iter().map(|set| {
+            Container::new(
+                Column::with_children(pixfont::sets::DEFINED_GLYPH_SETS.iter().map(|set| {
                     Button::new(Text::new(format!("{}", set)))
                         .style(iced::widget::button::text)
                         .width(240)
                         .on_press(Message::AddGlyphsFromSet(*set))
                         .into()
-                }),
-            ))
+                }))
+                .push(
+                    Button::new("Unicode block...")
+                        .style(iced::widget::button::text)
+                        .width(240)
+                        .on_press(Message::AddGlyphsFromUnicodeBlock),
+                ),
+            )
             .style(iced::widget::container::bordered_box),
             self.set_dropdown_shown,
         )
@@ -310,19 +329,24 @@ impl Directory {
         Row::new()
             .push(Scrollable::new(inspector))
             .push(
-                Container::new(
-                    Column::new()
-                        .push(toolbar)
-                        .push(
-                            Scrollable::new(directory)
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .spacing(4),
-                        )
-                        .spacing(4),
-                )
-                .padding(4)
-                .style(iced::widget::container::bordered_box),
+                self.new_from_unicode.view(
+                    Container::new(
+                        Column::new()
+                            .push(toolbar)
+                            .push(
+                                Scrollable::new(directory)
+                                    .width(Length::Fill)
+                                    .height(Length::Fill)
+                                    .spacing(4),
+                            )
+                            .spacing(4),
+                    )
+                    .padding(4)
+                    .style(iced::widget::container::bordered_box),
+                    Message::SelectBlock,
+                    Message::SubmitBlock,
+                    Message::CloseAddNewBlocks,
+                ),
             )
             .spacing(8)
             .into()
@@ -345,6 +369,23 @@ impl Directory {
             }
             Message::SetDropdown(show) => {
                 self.set_dropdown_shown = show.unwrap_or(!self.set_dropdown_shown);
+                Task::none()
+            }
+            Message::AddGlyphsFromUnicodeBlock => {
+                self.set_dropdown_shown = false;
+                self.new_from_unicode.show = true;
+                Task::none()
+            }
+            Message::CloseAddNewBlocks => {
+                self.new_from_unicode.show = false;
+                Task::none()
+            }
+            Message::SelectBlock(block) => {
+                self.new_from_unicode.selected = block;
+                Task::none()
+            }
+            Message::SubmitBlock(_) => {
+                self.new_from_unicode.show = false;
                 Task::none()
             }
             _ => todo!(),

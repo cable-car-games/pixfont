@@ -59,6 +59,12 @@ path = ["external/bootstrap-icons/**/*"]
 SPDX-License-Identifier = "MIT"
 SPDX-FileCopyrightText = "Copyright (c) 2019-2024 The Bootstrap Authors"
 
+# Bootstrap Icons (until we replace them with our own)
+[[annotations]]
+path = ["crates/ucd/src/ucd/**/*"]
+SPDX-License-Identifier = "Unicode-3.0"
+SPDX-FileCopyrightText = "© 2025 Unicode®, Inc."
+
 #
 # testing artifacts
 #

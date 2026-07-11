@@ -147,14 +147,26 @@ impl Editor {
             return Text::new("(glyph does not exist)").into();
         };
 
+        let codepoint = font.get_glyph_codepoint(selected_glyph_name);
+
         let inspector = Column::new()
             .width(320)
             .spacing(8)
             .push(
                 inspector::section("Glyph")
                     .push(inspector::property("Glyph name", text(selected_glyph_name)))
-                    .push(inspector::property("Codepoint", text("U+...")))
-                    .push(inspector::property("Alternate", text("...")))
+                    .push(inspector::property(
+                        "Codepoint",
+                        text(codepoint.map_or("???".to_string(), |(codepoint, _)| {
+                            format!("U+{:04X}", codepoint)
+                        })),
+                    ))
+                    .push(inspector::property(
+                        "Alternate",
+                        text(codepoint.map_or("???".to_string(), |(_, alternate)| {
+                            alternate.unwrap_or(&"(primary)".to_string()).clone()
+                        })),
+                    ))
                     .push(inspector::property(
                         "Advance",
                         number_input(&glyph.advance, 0..(i32::MAX as u32), |value| {
@@ -423,6 +435,7 @@ impl Editor {
 
         match message {
             Message::Apply(delta) => {
+                // TODO: filter out points already on the glyph
                 self.undo_stack.push_back(delta.clone());
                 apply(glyph, &delta);
                 Task::none()

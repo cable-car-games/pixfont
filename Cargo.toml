@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/pixfont", "crates/pixfont-studio"]
+members = ["crates/pixfont", "crates/pixfont-studio", "crates/ucd", "crates/ucd-macros"]
 
 [workspace.dependencies]
 indexmap = "2.14.0"

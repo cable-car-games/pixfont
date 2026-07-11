@@ -1561,6 +1561,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "iced_dialog"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ac1ce8766cca5304019c4af79352c3fadc5b8ed37b8b614657c33f2146acc35"
+dependencies = [
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
 name = "iced_fonts"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2987,6 +2997,7 @@ dependencies = [
  "glam 0.33.1",
  "iced",
  "iced_aw",
+ "iced_dialog",
  "image",
  "itertools 0.15.0",
  "open",
@@ -2996,6 +3007,7 @@ dependencies = [
  "serde",
  "thiserror 2.0.18",
  "toml",
+ "ucd",
 ]
 
 [[package]]
@@ -4133,6 +4145,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
 dependencies = [
  "core_maths",
+]
+
+[[package]]
+name = "ucd"
+version = "17.0.0"
+dependencies = [
+ "ucd-macros",
+]
+
+[[package]]
+name = "ucd-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
