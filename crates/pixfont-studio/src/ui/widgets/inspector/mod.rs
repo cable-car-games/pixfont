@@ -14,7 +14,6 @@ pub fn section<'state, M: 'state>(title: impl IntoFragment<'state>) -> Column<'s
 
 pub fn header<'state, M: 'state>(title: impl IntoFragment<'state>) -> Element<'state, M> {
     Container::new(Text::new(title).font(Font {
-        family: iced::font::Family::Name("Razza Sans"),
         weight: iced::font::Weight::Bold,
         ..Default::default()
     }))

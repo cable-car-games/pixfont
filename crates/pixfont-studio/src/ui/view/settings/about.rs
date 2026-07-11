@@ -46,7 +46,7 @@ pub fn view(_: &State) -> Element<'_, Message> {
                 )
                 .on_press(Message::ShowLicense)
             ]
-            .spacing(2),
+            .spacing(4),
         )
         .spacing(8),
     )

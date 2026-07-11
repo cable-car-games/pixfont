@@ -50,7 +50,6 @@ pub enum Message {
     SetOrder(DirectoryOrder),
 
     SetDropdown(Option<bool>),
-    ToggleExtra,
 
     // metadata update messages
     SetName(String),
@@ -72,14 +71,6 @@ pub enum Message {
 }
 
 impl Directory {
-    pub fn new() -> Self {
-        Self {
-            filter: None,
-            order: DirectoryOrder::None,
-            set_dropdown_shown: false,
-        }
-    }
-
     fn glyphs<'state>(
         &'state self,
         font: &'state pixfont::Font,

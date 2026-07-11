@@ -29,7 +29,19 @@ pub fn inset<'state, Message: 'state>(
 
 pub fn title<'a>(label: &'a str) -> Text<'a> {
     Text::new(label).size(24).font(Font {
-        family: iced::font::Family::Name("Razza Sans"),
+        weight: iced::font::Weight::Bold,
+        ..Default::default()
+    })
+}
+
+pub fn section<'a, M: 'a>(title: impl IntoFragment<'a>) -> Column<'a, M> {
+    Column::with_capacity(5)
+        .spacing(4)
+        .push(section_title(title))
+}
+
+pub fn section_title<'a>(label: impl IntoFragment<'a>) -> Text<'a> {
+    Text::new(label).size(16).font(Font {
         weight: iced::font::Weight::Bold,
         ..Default::default()
     })

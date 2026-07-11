@@ -12,15 +12,18 @@ use iced::{
     keyboard::{Key, key},
 };
 
+use crate::settings::{Appearance, EditorColors};
+
 pub struct GlyphEditor<'state, 'glyph, Message> {
     glyph: &'glyph pixfont::Glyph,
     metrics: &'glyph pixfont::Metrics,
     scale: f32,
     offset: Vector<f32>,
-    _tool: Tool,
+    tool: Tool,
     guidelines: Vec<pixfont::Guidelines>,
     on_scale: Option<Box<dyn Fn(f32) -> Message + 'state>>,
     on_pan: Option<Box<dyn Fn(Vector<f32>) -> Message + 'state>>,
+    colors: EditorColors,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,10 +57,11 @@ impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
             metrics,
             scale: 5.0,
             offset: Vector::new(0.0, 0.0),
-            _tool: Tool::Pen,
+            tool: Tool::Pen,
             on_scale: None,
             on_pan: None,
             guidelines: Vec::new(),
+            colors: Default::default(),
         }
     }
 
@@ -73,6 +77,16 @@ impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
 
     pub fn guidelines(mut self, guidelines: pixfont::Guidelines) -> Self {
         self.guidelines.push(guidelines);
+        self
+    }
+
+    pub fn colors(mut self, colors: EditorColors) -> Self {
+        self.colors = colors;
+        self
+    }
+
+    pub fn tool(mut self, tool: Tool) -> Self {
+        self.tool = tool;
         self
     }
 
@@ -120,6 +134,13 @@ impl<'state, 'glyph, Message> GlyphEditor<'state, 'glyph, Message> {
     }
 }
 
+pub const BACKGROUND_COLOR: Color = Color::from_rgb(0.2, 0.2, 0.2);
+pub const GRIDLINE_COLOR: Color = Color::BLACK;
+pub const GLYPH_COLOR: Color = Color::WHITE;
+pub const ORIGIN_COLOR: Color = Color::from_rgb8(0x80, 0x20, 0x20);
+pub const METRICS_COLOR: Color = Color::from_rgb8(0x80, 0xFF, 0);
+pub const GUIDELINE_COLOR: Color = Color::from_rgb8(0x80, 0x00, 0xFF);
+
 impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Renderer>
     for GlyphEditor<'_, '_, Message>
 {
@@ -159,6 +180,14 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
     ) {
         let bounds = layout.bounds();
         Draw::with(bounds, renderer, |draw| {
+            draw.renderer.fill_quad(
+                Quad {
+                    bounds,
+                    ..Default::default()
+                },
+                self.colors.background.map_or(BACKGROUND_COLOR, Into::into),
+            );
+
             // pixels
             for pixel in self.glyph.pixels.pixels() {
                 if let Some(origin) = self.to_iced_rect(Some(*pixel), &bounds) {
@@ -167,12 +196,17 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                             bounds: origin,
                             ..Default::default()
                         },
-                        Color::WHITE,
+                        self.colors.glyph.map_or(GLYPH_COLOR, Into::into),
                     );
                 }
             }
 
             // gridlines
+            draw.color = self
+                .colors
+                .gridlines
+                .map_or(GRIDLINE_COLOR, Into::into)
+                .into();
             let mut gx = bounds.x + self.offset.x % self.scale + (bounds.width / 2.0) % self.scale
                 - self.scale * 0.5;
             let mut gy = bounds.y
@@ -190,7 +224,8 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
 
             // guidelines
             for guidelines in &self.guidelines {
-                draw.color = Color::from_rgb8(0x80, 0x00, 0xFF).into();
+                draw.color =
+                    Background::Color(self.colors.guidelines.map_or(GUIDELINE_COLOR, Into::into));
 
                 for pixfont::Guideline { position, .. } in &guidelines.x {
                     draw.vline(
@@ -208,7 +243,7 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
             }
 
             // metrics lines
-            draw.color = Color::from_rgb8(0x80, 0xFF, 0).into();
+            draw.color = self.colors.metrics.map_or(METRICS_COLOR, Into::into).into();
             draw.vline(
                 bounds.center_x() + self.offset.x - self.scale / 2.0
                     + (self.glyph.advance as f32) * self.scale,
@@ -231,7 +266,7 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
             );
 
             // origin lines
-            draw.color = Color::from_rgb8(0x80, 0x20, 0x20).into();
+            draw.color = self.colors.origin.map_or(ORIGIN_COLOR, Into::into).into();
             draw.vline(bounds.center_x() + self.offset.x - self.scale / 2.0);
             draw.hline(bounds.center_y() + self.offset.y + self.scale / 2.0);
         });

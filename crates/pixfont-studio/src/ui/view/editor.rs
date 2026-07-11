@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
-use std::i32;
-
 use iced::{
     Element, Length, Task, Vector,
     widget::{Button, Column, Container, Row, Scrollable, Space, Text, button, text, text_input},
 };
 use iced_aw::number_input;
 
-use crate::ui::widgets::{
-    glyph_editor::{GlyphEditor, Tool},
-    icon::Icon,
-    inspector,
+use crate::{
+    settings::Settings,
+    ui::widgets::{
+        glyph_editor::{GlyphEditor, Tool},
+        icon::Icon,
+        inspector,
+    },
 };
 
 pub struct Editor {
@@ -98,7 +99,6 @@ pub enum GuidelineDirection {
 
 #[derive(Debug, Clone)]
 pub enum PrivateMessage {
-    None,
     SetScale(f32),
     SetOffset(Vector<f32>),
     SetTool(Tool),
@@ -117,6 +117,7 @@ impl Default for Editor {
 impl Editor {
     pub fn view<'state>(
         &'state self,
+        settings: &'state Settings,
         font: &'state pixfont::Font,
         selected_glyph_name: Option<&'state String>,
     ) -> Element<'state, Message> {
@@ -360,6 +361,8 @@ impl Editor {
                                 .offset(self.offset)
                                 .guidelines(font.metrics.guidelines.clone())
                                 .guidelines(glyph.guidelines.clone())
+                                .tool(self.tool)
+                                .colors(settings.appearance.editor)
                                 .on_scale(|scale| Message::Private(PrivateMessage::SetScale(scale)))
                                 .on_pan(|offset| {
                                     Message::Private(PrivateMessage::SetOffset(offset))
@@ -375,7 +378,6 @@ impl Editor {
 
     pub fn update(&mut self, message: PrivateMessage) -> Task<Message> {
         match message {
-            PrivateMessage::None => Task::none(),
             PrivateMessage::SetScale(scale) => {
                 self.scale = scale;
                 Task::none()

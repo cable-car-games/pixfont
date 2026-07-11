@@ -27,7 +27,6 @@ pub enum Message {
 
 #[derive(Debug, Clone)]
 pub enum PrivateMessage {
-    None,
     SetPage(Page),
 
     // pages
@@ -45,7 +44,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             page: Page::Appearance,
-            appearance: appearance::State {},
+            appearance: Default::default(),
             about: about::State {},
         }
     }
@@ -58,7 +57,10 @@ pub enum Page {
 }
 
 impl Settings {
-    pub fn view<'state>(&'state self) -> Element<'state, Message> {
+    pub fn view<'state>(
+        &'state self,
+        settings: &'state crate::settings::Settings,
+    ) -> Element<'state, Message> {
         let page_selector = Column::from_iter(
             [
                 (Page::Appearance, Icon::BiPalette, "Appearance"),
@@ -86,7 +88,8 @@ impl Settings {
                     Scrollable::with_direction(
                         Container::new(match self.page {
                             Page::Appearance => {
-                                appearance::view(&self.appearance).map(Self::map_appearance)
+                                appearance::view(&self.appearance, &settings.appearance)
+                                    .map(Self::map_appearance)
                             }
                             Page::About => about::view(&self.about).map(Self::map_about),
                         })
@@ -102,16 +105,23 @@ impl Settings {
             .into()
     }
 
-    pub fn update(&mut self, message: PrivateMessage) -> Task<Message> {
+    pub fn update(
+        &mut self,
+        settings: &mut crate::settings::Settings,
+        message: PrivateMessage,
+    ) -> Task<Message> {
         match message {
-            PrivateMessage::None => Task::none(),
             PrivateMessage::SetPage(page) => {
                 self.page = page;
                 Task::none()
             }
             PrivateMessage::Appearance(message) => match message {
+                appearance::Message::SettingChanged => {
+                    settings.save().expect("Failed to save setting");
+                    Task::none()
+                }
                 appearance::Message::Internal(message) => {
-                    appearance::update(&mut self.appearance, message)
+                    appearance::update(&mut self.appearance, &mut settings.appearance, message)
                         .map(|message| Message::Private(PrivateMessage::Appearance(message)))
                 }
             },

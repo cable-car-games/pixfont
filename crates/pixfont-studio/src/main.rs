@@ -3,13 +3,11 @@
 
 use std::{ffi::OsStr, path::PathBuf};
 
-use iced::{Element, Pixels, Settings, Task, widget::Column, window};
+use iced::{Element, Pixels, Settings, Task, Theme, widget::Column, window};
 use rfd::AsyncFileDialog;
 
-pub mod ui;
-
-const RAZZA_SANS_REGULAR_TTF: &[u8] = include_bytes!("ui/font/RazzaSans/Razza Sans Regular.ttf");
-const RAZZA_SANS_BOLD_TTF: &[u8] = include_bytes!("ui/font/RazzaSans/Razza Sans Bold.ttf");
+mod settings;
+mod ui;
 
 fn main() -> iced::Result {
     let image =
@@ -18,13 +16,8 @@ fn main() -> iced::Result {
 
     iced::application(Application::boot, Application::update, Application::view)
         .title(Application::title)
-        .font(RAZZA_SANS_REGULAR_TTF)
-        .font(RAZZA_SANS_BOLD_TTF)
+        .theme(Application::theme)
         .settings(Settings {
-            // default_font: Font {
-            //     family: font::Family::Name("Razza Sans"),
-            //     ..Default::default()
-            // },
             default_text_size: Pixels::from(13.0),
             ..Default::default()
         })
@@ -36,16 +29,23 @@ fn main() -> iced::Result {
 }
 
 struct Application {
-    topbar: ui::topbar::Topbar,
-    directory: ui::view::directory::Directory,
-    editor: ui::view::editor::Editor,
-    settings: ui::view::settings::Settings,
+    settings: crate::settings::Settings,
+    system_theme: iced::theme::Mode,
+
+    pages: PagesState,
 
     dirty: bool,
     project_path: Option<PathBuf>,
     project: pixfont::Font,
 
     selected_glyph: Option<String>,
+}
+
+struct PagesState {
+    topbar: ui::topbar::Topbar,
+    directory: ui::view::directory::Directory,
+    editor: ui::view::editor::Editor,
+    settings: ui::view::settings::Settings,
 }
 
 #[derive(Debug, Clone)]
@@ -57,23 +57,81 @@ enum Message {
     Directory(ui::view::directory::Message),
     Editor(ui::view::editor::Message),
     Settings(ui::view::settings::Message),
+
+    SetThemeMode(iced::theme::Mode),
 }
 
 impl Application {
     fn boot() -> (Self, Task<Message>) {
         (
             Self {
-                topbar: Default::default(),
-                directory: Default::default(),
-                editor: Default::default(),
-                settings: Default::default(),
+                // TODO: load settings
+                settings: settings::Settings::load().expect("Failed to load settings"),
+                system_theme: Default::default(),
+
+                pages: PagesState {
+                    topbar: Default::default(),
+                    directory: Default::default(),
+                    editor: Default::default(),
+                    settings: Default::default(),
+                },
                 dirty: false,
                 project_path: None,
                 project: Default::default(),
                 selected_glyph: None,
             },
-            Task::none(),
+            iced::system::theme().map(Message::SetThemeMode),
         )
+    }
+
+    fn view(&self) -> Element<'_, Message> {
+        Column::new()
+            .push(self.pages.topbar.view().map(Message::Topbar))
+            .push(match self.pages.topbar.view {
+                ui::topbar::View::Glyphs => self
+                    .pages
+                    .directory
+                    .view(&self.project, &self.selected_glyph)
+                    .map(Message::Directory),
+                ui::topbar::View::Edit => self
+                    .pages
+                    .editor
+                    .view(&self.settings, &self.project, self.selected_glyph.as_ref())
+                    .map(Message::Editor),
+                ui::topbar::View::Settings => self
+                    .pages
+                    .settings
+                    .view(&self.settings)
+                    .map(Message::Settings),
+            })
+            .padding(8)
+            .spacing(8)
+            .into()
+    }
+
+    fn title(&self) -> String {
+        let project_name = match &self.project_path {
+            Some(path) => &path
+                .file_name()
+                .map(OsStr::to_string_lossy)
+                .map(|f| f.to_string())
+                .unwrap_or("New Project".into()),
+            None => "New Project",
+        };
+
+        let dirty_mark = if self.dirty { "*" } else { "" };
+        format!("{}{} - {}", dirty_mark, project_name, "PixFont Studio")
+    }
+
+    fn theme(&self) -> Theme {
+        match self.settings.appearance.theme {
+            settings::Theme::Auto => match self.system_theme {
+                iced::theme::Mode::None | iced::theme::Mode::Light => Theme::Light,
+                iced::theme::Mode::Dark => Theme::Dark,
+            },
+            settings::Theme::Light => Theme::Light,
+            settings::Theme::Dark => Theme::Dark,
+        }
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
@@ -157,11 +215,12 @@ impl Application {
                     })
                 }
                 ui::topbar::Message::ShowView(view) => {
-                    self.topbar.view = view;
+                    self.pages.topbar.view = view;
                     Task::none()
                 }
                 ui::topbar::Message::OpenExportDropdown(visible) => {
-                    self.topbar.export_shown = visible.unwrap_or(!self.topbar.export_shown);
+                    self.pages.topbar.export_shown =
+                        visible.unwrap_or(!self.pages.topbar.export_shown);
                     Task::none()
                 }
             },
@@ -173,7 +232,8 @@ impl Application {
                 ui::view::directory::Message::AddGlyphsFromSet(set) => {
                     self.project
                         .add_codepoints(&mut set.codepoints().iter().copied());
-                    self.directory
+                    self.pages
+                        .directory
                         .update(ui::view::directory::Message::SetDropdown(Some(false)))
                         .map(Message::Directory)
                 }
@@ -234,11 +294,11 @@ impl Application {
                     Task::none()
                 }
 
-                _ => self.directory.update(message).map(Message::Directory),
+                _ => self.pages.directory.update(message).map(Message::Directory),
             },
             Message::Editor(message) => match message {
                 ui::view::editor::Message::Private(message) => {
-                    self.editor.update(message).map(Message::Editor)
+                    self.pages.editor.update(message).map(Message::Editor)
                 }
                 ui::view::editor::Message::SetGlyphProp(glyph_prop) => {
                     let glyph_name = self
@@ -431,43 +491,17 @@ impl Application {
                 },
             },
             Message::Settings(message) => match message {
-                ui::view::settings::Message::Private(message) => {
-                    self.settings.update(message).map(Message::Settings)
-                }
+                ui::view::settings::Message::Private(message) => self
+                    .pages
+                    .settings
+                    .update(&mut self.settings, message)
+                    .map(Message::Settings),
             },
+
+            Message::SetThemeMode(mode) => {
+                self.system_theme = mode;
+                Task::none()
+            }
         }
-    }
-
-    fn view(&self) -> Element<'_, Message> {
-        Column::new()
-            .push(self.topbar.view().map(Message::Topbar))
-            .push(match self.topbar.view {
-                ui::topbar::View::Glyphs => self
-                    .directory
-                    .view(&self.project, &self.selected_glyph)
-                    .map(Message::Directory),
-                ui::topbar::View::Edit => self
-                    .editor
-                    .view(&self.project, self.selected_glyph.as_ref())
-                    .map(Message::Editor),
-                ui::topbar::View::Settings => self.settings.view().map(Message::Settings),
-            })
-            .padding(8)
-            .spacing(8)
-            .into()
-    }
-
-    fn title(&self) -> String {
-        let project_name = match &self.project_path {
-            Some(path) => &path
-                .file_name()
-                .map(OsStr::to_string_lossy)
-                .map(|f| f.to_string())
-                .unwrap_or("New Project".into()),
-            None => "New Project",
-        };
-
-        let dirty_mark = if self.dirty { "*" } else { "" };
-        format!("{}{} - {}", dirty_mark, project_name, "PixFont Studio")
     }
 }
