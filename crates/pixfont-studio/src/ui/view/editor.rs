@@ -30,6 +30,7 @@ pub struct Editor {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum Message {
     Apply(Delta),
     SetScale(f32),
@@ -330,16 +331,16 @@ impl Editor {
                             ),
                     )
                     .push(Space::new())
-                    .push(
-                        Button::new(Icon::BiCopy.as_svg())
-                            .style(iced::widget::button::subtle)
-                            .on_press(Message::Copy),
-                    )
-                    .push(
-                        Button::new(Icon::BiClipboard.as_svg())
-                            .style(iced::widget::button::subtle)
-                            .on_press(Message::Paste),
-                    )
+                    //.push(
+                    //    Button::new(Icon::BiCopy.as_svg())
+                    //        .style(iced::widget::button::subtle)
+                    //        .on_press(Message::Copy),
+                    //)
+                    //.push(
+                    //    Button::new(Icon::BiClipboard.as_svg())
+                    //        .style(iced::widget::button::subtle)
+                    //        .on_press(Message::Paste),
+                    //)
                     .spacing(4)
                     .width(Length::Fill),
             )
@@ -350,7 +351,7 @@ impl Editor {
                             (Tool::Pen, Icon::BiPen, "Pen"),
                             (Tool::Line, Icon::BiSlashLg, "Line"),
                             (Tool::Rectangle, Icon::BiSquare, "Rectangle"),
-                            (Tool::Fill, Icon::BiPaintBucket, "Fill"),
+                            //(Tool::Fill, Icon::BiPaintBucket, "Fill"),
                             (Tool::Eraser, Icon::BiEraser, "Eraser"),
                             (Tool::Pan, Icon::BiArrowsMove, "Pan"),
                         ]

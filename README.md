@@ -4,14 +4,22 @@ PixFont aims to be a simple but capable way to make bitmap fonts you can use and
 
 This is early work in progress. It may not work or build if you look at it wrong.
 
+To do before Preview 1:
+
+- [ ] Save project to disk
+- [ ] Load project from disk
+- [ ] Export
+  - [ ] BitFontMaker2
+- [ ] Directory preview
+
 Goals:
 
-- [ ] Nice easy to use editor
-  - [ ] Guidelines
-  - [ ] Flexible metrics
+- [x] Nice easy to use editor
+  - [x] Guidelines
+  - [x] Flexible metrics
   - [ ] Local or web
-- [ ] Import from established pixel font formats
-  - [ ] Pentacom BitFontMaker2
+- [x] Import from established pixel font formats
+  - [x] Pentacom BitFontMaker2
   - [ ] Windows / OS2 bitmap font (.FON)
   - [ ] Mac OS classic?
   - [ ] BDF, PCF

@@ -79,8 +79,6 @@ pub enum Message {
     CloseAddNewBlocks,
     SelectBlock(Block),
     SubmitBlock(Block),
-
-    Noop,
 }
 
 impl Directory {
@@ -292,16 +290,16 @@ impl Directory {
         let toolbar = Row::new()
             .push(
                 Row::new()
-                    .push(
-                        Button::new(
-                            Row::new()
-                                .push(Icon::BiPlusLg.as_svg())
-                                .push("New glyph")
-                                .spacing(4),
-                        )
-                        .style(iced::widget::button::subtle)
-                        .on_press(Message::Noop),
-                    )
+                    //.push(
+                    //    Button::new(
+                    //        Row::new()
+                    //            .push(Icon::BiPlusLg.as_svg())
+                    //            .push("New glyph")
+                    //            .spacing(4),
+                    //    )
+                    //    .style(iced::widget::button::subtle)
+                    //    .on_press(Message::Noop),
+                    //)
                     .push(new_set_dropdown)
                     .spacing(2),
             )
@@ -354,7 +352,6 @@ impl Directory {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Noop => Task::none(),
             Message::SetFilter(str) => {
                 self.filter = if str.is_empty() {
                     None
