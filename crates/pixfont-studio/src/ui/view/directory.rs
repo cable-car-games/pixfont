@@ -5,7 +5,10 @@ use std::{fmt::Display, ops::Deref};
 
 use iced::{
     Element, Length, Task,
-    widget::{Button, Column, Container, Grid, PickList, Row, Scrollable, Text, TextInput},
+    widget::{
+        Button, Column, Container, Grid, PickList, Row, Scrollable, Text, TextInput, container,
+        image,
+    },
 };
 use iced_aw::{DropDown, drop_down::Alignment};
 use ucd::Block;
@@ -120,23 +123,53 @@ impl Directory {
         };
 
         Container::new(
-            Grid::with_children(glyphs.iter().map(|(name, _glyph)| {
+            Grid::with_children(glyphs.iter().map(|(name, glyph)| {
                 let name = *name;
-                let _glyph = *_glyph;
+                let glyph = *glyph;
+
+                let glyph_rgba = {
+                    let rect = glyph.pixels.rect();
+                    let mut pixels = Vec::with_capacity((rect.width * rect.height) as usize * 4);
+
+                    let height = font.metrics.em_size() as u32;
+
+                    for row in (font.metrics.descender..=font.metrics.ascender).rev() {
+                        for col in rect.left()..=rect.right() {
+                            let pixel = glyph.pixels.get(pixfont::Point::new(col, row));
+                            let pixel = if pixel { 0xFF } else { 0 };
+
+                            pixels.push(pixel);
+                            pixels.push(pixel);
+                            pixels.push(pixel);
+                            pixels.push(pixel);
+                        }
+                    }
+
+                    image::Handle::from_rgba(rect.width, height, pixels)
+                };
 
                 // TODO: glyph preview and mappings
-                Button::new(name.deref())
-                    .style(
-                        if let Some(selected_glyph) = selected_glyph
-                            && *selected_glyph == **name
-                        {
-                            iced::widget::button::primary
-                        } else {
-                            iced::widget::button::background
-                        },
-                    )
-                    .on_press(Message::SelectGlyph(name.to_string()))
-                    .into()
+                Button::new(
+                    Column::with_capacity(2).push(name.deref()).push(
+                        container(
+                            image(glyph_rgba)
+                                .filter_method(image::FilterMethod::Nearest)
+                                .expand(true),
+                        )
+                        .center(Length::Fill),
+                    ),
+                )
+                .style(
+                    if let Some(selected_glyph) = selected_glyph
+                        && *selected_glyph == **name
+                    {
+                        iced::widget::button::primary
+                    } else {
+                        iced::widget::button::background
+                    },
+                )
+                .on_press(Message::SelectGlyph(name.to_string()))
+                .into()
             }))
             .fluid(120)
             .spacing(4),

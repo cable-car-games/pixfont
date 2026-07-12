@@ -47,7 +47,7 @@ impl From<File> for crate::Font {
         Self {
             metadata: file.metadata.into(),
             metrics: file.metrics.into(),
-            alternates: file.alternates.into(),
+            alternates: file.alternates,
             mappings: file
                 .mappings
                 .into_iter()
