@@ -20,8 +20,8 @@ pub const DEFINED_GLYPH_SETS: &[GlyphSet] = &[
     GlyphSet::LatinLower,
     GlyphSet::LatinUpper,
     GlyphSet::Alphanumeric,
-    GlyphSet::Punctuation,
-    GlyphSet::BoxDrawing,
+    //GlyphSet::Punctuation,
+    //GlyphSet::BoxDrawing,
 ];
 
 impl GlyphSet {
