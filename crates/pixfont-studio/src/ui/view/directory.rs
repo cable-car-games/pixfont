@@ -129,23 +129,28 @@ impl Directory {
 
                 let glyph_rgba = {
                     let rect = glyph.pixels.rect();
-                    let mut pixels = Vec::with_capacity((rect.width * rect.height) as usize * 4);
+                    if rect.width == 0 {
+                        image::Handle::from_rgba(1, 1, vec![0, 0, 0, 0])
+                    } else {
+                        let mut pixels =
+                            Vec::with_capacity((rect.width * rect.height) as usize * 4);
 
-                    let height = font.metrics.em_size() as u32;
+                        let height = font.metrics.em_size() as u32;
 
-                    for row in (font.metrics.descender..=font.metrics.ascender).rev() {
-                        for col in rect.left()..=rect.right() {
-                            let pixel = glyph.pixels.get(pixfont::Point::new(col, row));
-                            let pixel = if pixel { 0xFF } else { 0 };
+                        for row in (font.metrics.descender..=font.metrics.ascender).rev() {
+                            for col in rect.left()..=rect.right() {
+                                let pixel = glyph.pixels.get(pixfont::Point::new(col, row));
+                                let pixel = if pixel { 0xFF } else { 0 };
 
-                            pixels.push(pixel);
-                            pixels.push(pixel);
-                            pixels.push(pixel);
-                            pixels.push(pixel);
+                                pixels.push(pixel);
+                                pixels.push(pixel);
+                                pixels.push(pixel);
+                                pixels.push(pixel);
+                            }
                         }
-                    }
 
-                    image::Handle::from_rgba(rect.width, height, pixels)
+                        image::Handle::from_rgba(rect.width, height, pixels)
+                    }
                 };
 
                 // TODO: glyph preview and mappings

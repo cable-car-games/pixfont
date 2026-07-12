@@ -183,7 +183,7 @@ impl Editor {
                     ))
                     .push(inspector::property(
                         "Ascender",
-                        number_input(&font.metrics.ascender, 0..i32::MAX, |value| {
+                        number_input(&font.metrics.ascender, 1..i32::MAX, |value| {
                             Message::SetGlyphProp(GlyphProp::Ascender(value))
                         })
                         .width(Length::Fill),
