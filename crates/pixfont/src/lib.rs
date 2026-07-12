@@ -12,6 +12,7 @@ use indexmap::IndexMap;
 pub mod sets;
 
 pub mod export;
+pub mod formats;
 pub mod import;
 
 #[cfg(test)]
@@ -333,4 +334,10 @@ impl Rect {
     pub fn size(&self) -> Size {
         Size::new(self.width, self.height)
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Could not find glyph '{name}'")]
+    GlyphNotFound { name: String },
 }

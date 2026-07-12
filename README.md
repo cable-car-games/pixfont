@@ -9,7 +9,7 @@ To do before Preview 1:
 - [ ] Save project to disk
 - [ ] Load project from disk
 - [ ] Export
-  - [ ] BitFontMaker2
+  - [x] BitFontMaker2
 - [ ] Directory preview
 
 Goals:

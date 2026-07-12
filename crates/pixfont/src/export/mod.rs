@@ -63,6 +63,9 @@ pub const EXPORTERS: &[Exporter] = &[
 
 #[derive(Error, Debug)]
 pub enum ExportError {
+    #[error("format error")]
+    Format(#[from] crate::Error),
+
     #[error("write error")]
     Write(#[from] io::Error),
 

@@ -3,9 +3,54 @@
 
 use std::io::Write;
 
-use super::ExportError;
-use crate::Font;
+use json::JsonValue;
 
-pub fn export(_font: &Font, _write: &mut impl Write) -> Result<(), ExportError> {
-    todo!();
+use super::ExportError;
+use crate::formats::pentacom::*;
+use crate::{Error, Font, Point};
+
+pub fn export(font: &Font, writer: &mut impl Write) -> Result<(), ExportError> {
+    let mut json = json::object! {
+        name: font.metadata.name.as_str(),
+    };
+
+    if let Some(author) = &font.metadata.author {
+        json["copy"] = author.as_str().into();
+    }
+
+    if let Some(mono_advance) = font.metrics.mono_advance {
+        json["monospace"] = true.into();
+        json["monospacewidth"] = mono_advance.into();
+    }
+
+    for (codepoint, mapping) in &font.mappings {
+        let codepoint = *codepoint;
+        let glyph = font
+            .glyphs
+            .get(&mapping.glyph)
+            .ok_or_else(|| Error::GlyphNotFound {
+                name: mapping.glyph.clone(),
+            })?;
+
+        let mut out = Vec::with_capacity(16);
+
+        for row in (GLYPH_Y_MIN..=GLYPH_Y_MAX).rev() {
+            let mut out_row = 0u16;
+            for col in (GLYPH_X_MIN..=GLYPH_X_MAX).rev() {
+                let on = if glyph.pixels.get(Point::new(col, row)) {
+                    1
+                } else {
+                    0
+                };
+
+                out_row = out_row << 1 | on;
+            }
+            out.push(out_row);
+        }
+
+        json[&codepoint.to_string()] = JsonValue::from(out);
+    }
+
+    writer.write_all(&json.to_string().into_bytes())?;
+    Ok(())
 }

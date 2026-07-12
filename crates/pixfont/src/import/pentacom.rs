@@ -6,19 +6,13 @@ use std::io::read_to_string;
 use glifnames::{AGLFN, GlyphName};
 use json::JsonValue::{self};
 
-use crate::{Font, Glyph, Guideline, Guidelines, Metrics, Point, import::ImportError};
-
-pub const GLYPH_HEIGHT: usize = 16;
-pub const GLYPH_WIDTH_MAX: usize = 16;
-
-pub const GLYPH_X_MIN: i32 = -2;
-pub const GLYPH_X_MAX: i32 = 13;
-pub const GLYPH_Y_MIN: i32 = -4;
-pub const GLYPH_Y_MAX: i32 = 11;
+use crate::{
+    Font, Glyph, Guideline, Guidelines, Metrics, Point, formats::pentacom::*, import::ImportError,
+};
 
 pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
-    let json_string = read_to_string(read)?;
-    let json = match json::parse(&json_string) {
+    let json = read_to_string(read)?;
+    let json = match json::parse(&json) {
         Ok(json) => json,
         Err(error) => return Err(ImportError::Misc(Box::new(error))),
     };
@@ -86,7 +80,7 @@ pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
 
             key => {
                 if !try_parse_glyph(key, value, &mut font)? {
-                    print!("{key} not handled");
+                    println!("{key} not handled");
                 }
             }
         };
