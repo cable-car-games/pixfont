@@ -3014,7 +3014,7 @@ dependencies = [
 
 [[package]]
 name = "pixfont-studio"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "app_data",
  "glam 0.33.1",
