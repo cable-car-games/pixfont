@@ -28,6 +28,7 @@ path = [
     "docs/**/*",
     "README.md",
     "CONTRIBUTING.md",
+    "RELEASE-NOTES.md",
     "AGENTS.md",
     "CLAUDE.md",
     "logo.png",
