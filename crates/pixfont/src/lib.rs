@@ -324,11 +324,11 @@ impl Rect {
     }
 
     pub fn right(&self) -> i32 {
-        self.x + (self.width as i32)
+        self.x + (self.width as i32) - 1
     }
 
     pub fn top(&self) -> i32 {
-        self.y + (self.height as i32)
+        self.y + (self.height as i32) - 1
     }
 
     pub fn size(&self) -> Size {

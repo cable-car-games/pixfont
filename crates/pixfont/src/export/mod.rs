@@ -51,14 +51,14 @@ impl Display for Exporter {
 }
 
 pub const EXPORTERS: &[Exporter] = &[
-    Exporter::Binary,
+    //Exporter::Binary,
     Exporter::Pentacom,
-    Exporter::BmFont,
-    Exporter::Bdf,
-    Exporter::Pcf,
-    Exporter::Windows,
-    Exporter::Ufo,
-    Exporter::TrueType,
+    //Exporter::BmFont,
+    //Exporter::Bdf,
+    //Exporter::Pcf,
+    //Exporter::Windows,
+    //Exporter::Ufo,
+    //Exporter::TrueType,
 ];
 
 #[derive(Error, Debug)]

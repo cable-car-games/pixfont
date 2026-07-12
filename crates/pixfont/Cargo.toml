@@ -8,9 +8,12 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+bitvec = "1.1.1"
 glifnames = "0.2.0"
-indexmap.workspace = true
+indexmap = { workspace = true, features = ["serde"] }
 json = "0.12.4"
+serde = { version = "1.0.228", features = ["derive"] }
 thiserror = "2.0.18"
+toml = { version = "1.1.2", features = ["preserve_order"] }
 unicode-blocks = "0.1.9"
 unicode_names2 = "3.1.0"

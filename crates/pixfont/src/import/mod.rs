@@ -28,6 +28,9 @@ pub enum Importer {
 
 pub const IMPORTERS: &[Importer] = &[Importer::Binary, Importer::Project, Importer::Pentacom];
 
+// TODO: the way we do imports need to change so we can determine the format
+//       from the file contents
+
 impl Importer {
     pub fn from_extension(path: &Path) -> Option<Self> {
         let extension = path.extension()?;
@@ -35,7 +38,7 @@ impl Importer {
         Some(
             if extension == OsStr::new("pixfont") || extension == OsStr::new("pxf") {
                 Importer::Binary
-            } else if extension == OsStr::new("pxfproj") {
+            } else if extension == OsStr::new("pxproj") || extension == OsStr::new("pxfproj") {
                 Importer::Project
             } else if extension == OsStr::new("json")
                 || extension == OsStr::new("txt")
@@ -59,6 +62,9 @@ impl Display for Importer {
     }
 }
 
+// TODO: we also need to split up import errors into two categories:
+//       - bad format (try the next one)
+//       - crash out (can't read the file)
 #[derive(Error, Debug)]
 pub enum ImportError {
     #[error("read error")]
@@ -77,7 +83,7 @@ pub enum ImportError {
 pub fn import(importer: Importer, read: &mut impl Read) -> Result<Font, ImportError> {
     match importer {
         Importer::Binary => todo!(),
-        Importer::Project => todo!(),
+        Importer::Project => pxfproj::import(read),
         Importer::Pentacom => pentacom::import(read),
     }
 }

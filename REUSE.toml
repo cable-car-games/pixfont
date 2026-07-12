@@ -66,6 +66,15 @@ SPDX-License-Identifier = "Unicode-3.0"
 SPDX-FileCopyrightText = "© 2025 Unicode®, Inc."
 
 #
+# samples
+#
+
+[[annotations]]
+path = ["samples/**/*"]
+SPDX-License-Identifier = "CC0-1.0"
+SPDX-FileCopyrightText = "2026 Rareș Nistor"
+
+#
 # testing artifacts
 #
 

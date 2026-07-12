@@ -1,0 +1,293 @@
+version = "dev"
+exporter = "PixFont Studio dev build"
+
+[metadata]
+name = "Sample Numbers"
+family = "Sample"
+author = "Rareș Nistor"
+copyright = "© 2026 Rareș Nistor"
+license = "CC0"
+
+[metadata.extra]
+
+[metrics]
+ascender = 7
+descender = -1
+cap_height = 0
+x_height = 0
+
+[metrics.guidelines]
+x = []
+y = []
+
+[alternates]
+
+[mappings.48]
+Single = "zero"
+
+[mappings.49]
+Single = "one"
+
+[mappings.50]
+Single = "two"
+
+[mappings.51]
+Single = "three"
+
+[mappings.52]
+Single = "four"
+
+[mappings.53]
+Single = "five"
+
+[mappings.54]
+Single = "six"
+
+[mappings.55]
+Single = "seven"
+
+[mappings.56]
+Single = "eight"
+
+[mappings.57]
+Single = "nine"
+
+[glyphs.zero]
+advance = 5
+
+[glyphs.zero.pixels]
+min_x = 0
+min_y = 0
+max_x = 4
+max_y = 6
+pixels = """
+.XXX.
+XX.XX
+XX.XX
+XX.XX
+XX.XX
+XX.XX
+.XXX.
+"""
+
+[glyphs.zero.guidelines]
+x = []
+y = []
+
+[glyphs.zero.extra]
+
+[glyphs.one]
+advance = 4
+
+[glyphs.one.pixels]
+min_x = 0
+min_y = 0
+max_x = 3
+max_y = 6
+pixels = """
+.XX.
+XXX.
+.XX.
+.XX.
+.XX.
+.XX.
+XXXX
+"""
+
+[glyphs.one.guidelines]
+x = []
+y = []
+
+[glyphs.one.extra]
+
+[glyphs.two]
+advance = 5
+
+[glyphs.two.pixels]
+min_x = 0
+min_y = 0
+max_x = 4
+max_y = 6
+pixels = """
+.XXX.
+XX.XX
+...XX
+..XX.
+.XX..
+XX...
+XXXXX
+"""
+
+[glyphs.two.guidelines]
+x = []
+y = []
+
+[glyphs.two.extra]
+
+[glyphs.three]
+advance = 5
+
+[glyphs.three.pixels]
+min_x = 0
+min_y = 0
+max_x = 4
+max_y = 6
+pixels = """
+.XXX.
+XX.XX
+...XX
+..XX.
+...XX
+XX.XX
+.XXX.
+"""
+
+[glyphs.three.guidelines]
+x = []
+y = []
+
+[glyphs.three.extra]
+
+[glyphs.four]
+advance = 5
+
+[glyphs.four.pixels]
+min_x = 0
+min_y = 0
+max_x = 4
+max_y = 6
+pixels = """
+..XX.
+.XXX.
+X.XX.
+X.XX.
+XXXXX
+..XX.
+..XX.
+"""
+
+[glyphs.four.guidelines]
+x = []
+y = []
+
+[glyphs.four.extra]
+
+[glyphs.five]
+advance = 5
+
+[glyphs.five.pixels]
+min_x = 0
+min_y = 0
+max_x = 4
+max_y = 6
+pixels = """
+XXXXX
+XX...
+XX...
+XXXX.
+...XX
+XX.XX
+.XXX.
+"""
+
+[glyphs.five.guidelines]
+x = []
+y = []
+
+[glyphs.five.extra]
+
+[glyphs.six]
+advance = 5
+
+[glyphs.six.pixels]
+min_x = 0
+min_y = 0
+max_x = 4
+max_y = 6
+pixels = """
+.XXX.
+XX.XX
+XX...
+XXXX.
+XX.XX
+XX.XX
+.XXX.
+"""
+
+[glyphs.six.guidelines]
+x = []
+y = []
+
+[glyphs.six.extra]
+
+[glyphs.seven]
+advance = 5
+
+[glyphs.seven.pixels]
+min_x = 0
+min_y = 0
+max_x = 4
+max_y = 6
+pixels = """
+XXXXX
+X..XX
+...XX
+..XX.
+..XX.
+.XX..
+.XX..
+"""
+
+[glyphs.seven.guidelines]
+x = []
+y = []
+
+[glyphs.seven.extra]
+
+[glyphs.eight]
+advance = 5
+
+[glyphs.eight.pixels]
+min_x = 0
+min_y = 0
+max_x = 4
+max_y = 6
+pixels = """
+.XXX.
+XX.XX
+XX.XX
+.XXX.
+XX.XX
+XX.XX
+.XXX.
+"""
+
+[glyphs.eight.guidelines]
+x = []
+y = []
+
+[glyphs.eight.extra]
+
+[glyphs.nine]
+advance = 5
+
+[glyphs.nine.pixels]
+min_x = 0
+min_y = 0
+max_x = 4
+max_y = 6
+pixels = """
+.XXX.
+XX.XX
+XX.XX
+.XXXX
+...XX
+XX.XX
+.XXX.
+"""
+
+[glyphs.nine.guidelines]
+x = []
+y = []
+
+[glyphs.nine.extra]
