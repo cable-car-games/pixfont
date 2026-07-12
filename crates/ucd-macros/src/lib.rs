@@ -21,7 +21,6 @@ pub fn blocks(input: TokenStream) -> TokenStream {
     let BlockSource(source) = syn::parse_macro_input!(input as BlockSource);
     let source = file.parent().unwrap().join(source);
 
-    println!("{:?}", &source);
     let mut file = File::open(source).expect("and i oop");
     let mut reader = BufReader::new(&mut file);
 
