@@ -30,6 +30,7 @@ path = [
     "CONTRIBUTING.md",
     "AGENTS.md",
     "CLAUDE.md",
+    "RELEASE-NOTES.md",
     "logo.png",
 ]
 precedence = "override"
