@@ -106,7 +106,7 @@ pub struct Metadata {
     pub extra: IndexMap<String, String>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Metrics {
     /// The position where ascenders normally end.
     pub ascender: i32,
@@ -126,6 +126,19 @@ pub struct Metrics {
 
     /// Guidelines appearing across all glyphs.
     pub guidelines: Guidelines,
+}
+
+impl Default for Metrics {
+    fn default() -> Self {
+        Self {
+            ascender: 14,
+            descender: -2,
+            cap_height: 12,
+            x_height: 9,
+            mono_advance: None,
+            guidelines: Default::default(),
+        }
+    }
 }
 
 impl Metrics {
@@ -273,7 +286,7 @@ impl Size {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, Hash)]
+#[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq)]
 pub struct Rect {
     pub x: i32,
     pub y: i32,
