@@ -64,7 +64,8 @@ jobs:
       - name: Copy binary
         if: startsWith(matrix.name, 'windows-')
         run: |
-          cp target/${{ matrix.target }}/debug/pixfont-studio.{exe,pdb} dist/${{ matrix.name }}
+          cp target/${{ matrix.target }}/debug/pixfont-studio.exe dist/${{ matrix.name }}
+          cp target/${{ matrix.target }}/debug/*.pdb              dist/${{ matrix.name }} || true
         shell: bash
 
       - name: Copy binary
