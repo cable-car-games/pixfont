@@ -7,7 +7,8 @@ use glifnames::{AGLFN, GlyphName};
 use json::JsonValue::{self};
 
 use crate::{
-    Font, Glyph, Guideline, Guidelines, Metrics, Point, formats::pentacom::*, import::ImportError,
+    CodepointMapping, Font, Glyph, Guideline, Guidelines, Metrics, Pixels, Point,
+    formats::pentacom::*, import::ImportError,
 };
 
 pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
@@ -35,8 +36,13 @@ pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
         ..Default::default()
     };
 
+    let mut warnings: Vec<&'static str> = vec![];
+
     let mut monospace_flag = false;
     let mut monospace_width = 0u32;
+
+    let mut word_spacing = 5;
+    let mut letter_spacing = 1;
 
     for (key, value) in json.entries() {
         match key {
@@ -60,17 +66,30 @@ pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
 
             // Letter Spacing (0px = 0, 1px = 64, 2px = 128)
             "letterspace" => {
-                // TODO
+                letter_spacing = match value.as_u32() {
+                    Some(value) => value,
+                    None => {
+                        warnings.push("letterspace: not a u32");
+                        continue;
+                    }
+                };
             }
 
             // Word spacing (the advance of the space glyph)
             "wordspacing" => {
-                // TODO
+                word_spacing = match value.as_u32() {
+                    Some(value) => value,
+                    None => {
+                        warnings.push("workspacing: not a u32");
+                        continue;
+                    }
+                }
             }
 
             "monospace" => {
                 monospace_flag = true;
             }
+
             "monospacewidth" => {
                 monospace_width = match value.as_str() {
                     Some(value) => value.parse().unwrap_or_default(),
@@ -89,6 +108,30 @@ pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
     if monospace_flag && monospace_width > 0 {
         font.metrics.mono_advance = Some(monospace_width);
     }
+
+    if letter_spacing > 0 {
+        font.glyphs.iter_mut().for_each(|(_, glyph)| {
+            glyph.advance += letter_spacing;
+        });
+    }
+
+    {
+        const SPACE: u32 = ' ' as u32;
+        let space_glyph_name = glifnames::AGLFN::glyph_name(SPACE);
+
+        let mapping = font.mappings.entry(' ' as u32).or_insert(CodepointMapping {
+            glyph: space_glyph_name.into(),
+            alternate: Default::default(),
+        });
+
+        font.glyphs.entry(mapping.glyph.clone()).or_insert(Glyph {
+            name: mapping.glyph.clone(),
+            pixels: Pixels::new(),
+            advance: word_spacing,
+            guidelines: Default::default(),
+            extra: Default::default(),
+        })
+    };
 
     Ok(font)
 }
@@ -144,7 +187,7 @@ fn try_parse_glyph(key: &str, value: &JsonValue, font: &mut Font) -> Result<bool
         }
     }
 
-    glyph.advance = glyph.pixels.rect().right() as u32;
+    glyph.advance = glyph.pixels.rect().right() as u32 + 1;
     font.add_glyph_and_mapping(codepoint, &AGLFN::glyph_name(codepoint), glyph);
 
     Ok(true)
