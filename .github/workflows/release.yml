@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: release/v*
+    tags: v*.*.*
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  cancel-in-progress: true
+  group: release-${{github.ref}}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-amd64
+            os: windows-2025
+            target: x86_64-pc-windows-msvc
+          - name: windows-arm64
+            os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+          - name: macos-arm64
+            os: macos-15
+            target: aarch64-apple-darwin
+          - name: macos-amd64 # let's keep Intel Macs alive for a bit longer
+            os: macos-15-intel
+            target: x86_64-apple-darwin
+          - name: linux-amd64
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - name: linux-arm64
+            os: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        if: startsWith(matrix.name, 'linux-')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxkbcommon-dev libxrandr-dev
+
+      - name: Build
+        run: cargo build --locked --target ${{ matrix.target }}
+
+      - name: Stage release
+        run: |
+          set -e
+          mkdir -p dist/${{ matrix.name }}
+          cp -r README.md RELEASE-NOTES.md samples dist/${{ matrix.name }}
+          cp LICENSES/AGPL-3.0-or-later.txt dist/${{ matrix.name }}/LICENSE
+        shell: bash
+
+      - name: Copy binary
+        if: startsWith(matrix.name, 'windows-')
+        run: |
+          cp target/${{ matrix.target }}/debug/pixfont-studio.{exe,pdb} dist/${{ matrix.name }}
+        shell: bash
+
+      - name: Copy binary
+        if: (!startsWith(matrix.name, 'windows-'))
+        run: |
+          cp target/${{ matrix.target }}/debug/pixfont-studio dist/${{ matrix.name }}
+        shell: bash
+
+      - name: Create archive
+        run: tar -czf dist/${{ matrix.name }}-bin.tar.gz -C dist ${{ matrix.name }}
+        shell: bash
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.name }}-${{ github.sha }}-bin.tar.gz
+          path: dist/${{ matrix.name }}-bin.tar.gz
+
+  release:
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download binaries
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: "*-bin.tar.gz"
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          body_path: RELEASE-NOTES.md
+          files: "dist/*-bin.tar.gz"
+          draft: true # TODO: make non-draft once we get in the groove of things
+          prerelease: true
+          fail_on_unmatched_files: true
+
+      # TODO: add itch.io releases
