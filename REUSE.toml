@@ -54,6 +54,12 @@ path = ["crates/pixfont-studio/src/ui/font/RazzaSans/**/*"]
 SPDX-License-Identifier = "OFL-1.1"
 SPDX-FileCopyrightText = "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
 
+# pixicons
+[[annotations]]
+path = ["crates/pixicons/layers/**/*.png", "crates/pixicons/work/**/*.ase"]
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+SPDX-FileCopyrightText = "2026 Rareș Nistor"
+
 # Bootstrap Icons (until we replace them with our own)
 [[annotations]]
 path = ["external/bootstrap-icons/**/*"]

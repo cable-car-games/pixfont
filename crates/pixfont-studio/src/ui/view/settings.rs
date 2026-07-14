@@ -8,8 +8,7 @@ use iced::{
         scrollable::{Direction, Scrollbar},
     },
 };
-
-use crate::ui::widgets::icon::Icon;
+use pixicons::icon::icon;
 
 mod about;
 mod appearance;
@@ -63,11 +62,11 @@ impl Settings {
     ) -> Element<'state, Message> {
         let page_selector = Column::from_iter(
             [
-                (Page::Appearance, Icon::BiPalette, "Appearance"),
-                (Page::About, Icon::BiInfoCircleFill, "About"),
+                (Page::Appearance, icon!(appearance), "Appearance"),
+                (Page::About, icon!(info), "About"),
             ]
             .map(|(page, icon, label)| {
-                Button::new(Row::new().push(icon.as_svg()).push(label).spacing(8))
+                Button::new(Row::new().push(icon).push(label).spacing(8))
                     .on_press(Message::Private(PrivateMessage::SetPage(page)))
                     .style(if page == self.page {
                         iced::widget::button::primary
