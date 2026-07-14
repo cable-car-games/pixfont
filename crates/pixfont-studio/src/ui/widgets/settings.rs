@@ -7,8 +7,7 @@ use iced::{
     padding,
     widget::{Button, Column, Row, Text, container, space, text::IntoFragment},
 };
-
-use crate::ui::widgets::icon::Icon;
+use pixicons::icon::Icon;
 
 pub fn wrapper<'state, Message: 'state>(
     content: impl Into<Element<'state, Message>>,
@@ -50,7 +49,7 @@ pub fn section_title<'a>(label: impl IntoFragment<'a>) -> Text<'a> {
 pub fn button<'state, Message: 'state>(
     title: impl IntoFragment<'state>,
     subtitle: Option<impl IntoFragment<'state>>,
-    icon: Option<Icon>,
+    icon: Option<Icon<'state>>,
 ) -> Button<'state, Message> {
     let mut label = Column::new().push(Text::new(title));
     if let Some(subtitle) = subtitle {
@@ -59,13 +58,12 @@ pub fn button<'state, Message: 'state>(
 
     let mut row = Row::new();
     if let Some(icon) = icon {
-        row = row.push(icon.as_svg());
+        row = row.push(icon);
     }
 
     let row = row
         .push(label)
         .push(space::horizontal())
-        .push(Icon::BiChevronRight.as_svg())
         .align_y(Vertical::Center);
 
     Button::new(row)
