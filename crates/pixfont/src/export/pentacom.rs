@@ -23,8 +23,22 @@ pub fn export(font: &Font, writer: &mut impl Write) -> Result<(), ExportError> {
         json["monospacewidth"] = mono_advance.into();
     }
 
+    if let Some(mapping) = font.mappings.get(&(' ' as u32)) {
+        let glyph = font
+            .glyphs
+            .get(&mapping.glyph)
+            .expect("glyph doesn't exist");
+        json["wordspacing"] = glyph.advance.into();
+    }
+
     for (codepoint, mapping) in &font.mappings {
         let codepoint = *codepoint;
+
+        // ignore spaces, handled separately
+        if codepoint == ' ' as u32 {
+            continue;
+        }
+
         let glyph = font
             .glyphs
             .get(&mapping.glyph)
