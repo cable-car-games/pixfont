@@ -8,7 +8,7 @@ work so far.
 
 New in this release:
 
-- (todo)
+- A new icon set
 
 What broke:
 

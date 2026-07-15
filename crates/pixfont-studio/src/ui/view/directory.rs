@@ -11,12 +11,10 @@ use iced::{
     },
 };
 use iced_aw::{DropDown, drop_down::Alignment};
+use pixicons::icon::icon;
 use ucd::Block;
 
-use crate::ui::{
-    view::directory::new_from_unicode::NewFromUnicode,
-    widgets::{icon::Icon, inspector},
-};
+use crate::ui::{view::directory::new_from_unicode::NewFromUnicode, widgets::inspector};
 
 mod new_from_unicode;
 
@@ -292,7 +290,7 @@ impl Directory {
         let new_set_dropdown = DropDown::new(
             Button::new(
                 Row::new()
-                    .push(Icon::BiPlusLg.as_svg())
+                    .push(icon!(glyphset))
                     .push("New from set")
                     .spacing(4),
             )

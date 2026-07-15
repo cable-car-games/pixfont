@@ -9,17 +9,17 @@ license = "AGPL-3.0-or-later"
 
 [dependencies]
 app_data = "0.1.1"
-glam = "0.33.1"
-iced = { version = "0.14.0", features = ["advanced", "image", "svg"] }
+iced.workspace = true
 iced_aw = "0.14.1"
 iced_dialog = "0.14.0"
-image = "0.25.10"
+image.workspace = true
 itertools = "0.15.0"
 open = "5.3.5"
 pixfont = { path = "../pixfont" }
+pixicons = { path = "../pixicons" }
 regex = "1.13.0"
 rfd = { version = "0.17.2", features = ["xdg-portal"] }
-serde = { version = "1.0.228", features = ["derive"] }
-thiserror = "2.0.18"
-toml = "1.1.2"
+serde.workspace = true
+thiserror.workspace = true
+toml.workspace = true
 ucd = { path = "../ucd" }

@@ -10,13 +10,14 @@ use iced::{
 };
 use iced_aw::number_input;
 use pixfont::{Glyph, Guideline, Guidelines};
+use pixicons::icon::icon;
 
 use crate::{
     settings::Settings,
     ui::widgets::{
         glyph_editor::{Delta, GlyphEditor, Tool},
-        icon::Icon,
         inspector,
+        tooltip::toolbar_tooltip,
     },
 };
 
@@ -316,20 +317,22 @@ impl Editor {
         let toolbar = Row::new()
             .push(
                 Row::new()
-                    .push(
-                        Button::new(Icon::BiArrowCounterclockwise.as_svg())
+                    .push(toolbar_tooltip(
+                        button(icon!(undo))
                             .style(iced::widget::button::subtle)
                             .on_press_maybe(
                                 self.undo_stack.is_empty().not().then_some(Message::Undo),
                             ),
-                    )
-                    .push(
-                        Button::new(Icon::BiArrowClockwise.as_svg())
+                        "Undo",
+                    ))
+                    .push(toolbar_tooltip(
+                        Button::new(icon!(redo))
                             .style(iced::widget::button::subtle)
                             .on_press_maybe(
                                 self.redo_stack.is_empty().not().then_some(Message::Redo),
                             ),
-                    )
+                        "Redo",
+                    ))
                     .push(Space::new())
                     //.push(
                     //    Button::new(Icon::BiCopy.as_svg())
@@ -348,22 +351,25 @@ impl Editor {
                 Row::new()
                     .extend(
                         [
-                            (Tool::Pen, Icon::BiPen, "Pen"),
-                            (Tool::Line, Icon::BiSlashLg, "Line"),
-                            (Tool::Rectangle, Icon::BiSquare, "Rectangle"),
-                            //(Tool::Fill, Icon::BiPaintBucket, "Fill"),
-                            (Tool::Eraser, Icon::BiEraser, "Eraser"),
-                            (Tool::Pan, Icon::BiArrowsMove, "Pan"),
+                            (Tool::Pen, icon!(pen), "Pen"),
+                            (Tool::Line, icon!(line), "Line"),
+                            (Tool::Rectangle, icon!(rectangle), "Rectangle"),
+                            //(Tool::Fill, icon!(fill), "Fill"),
+                            (Tool::Eraser, icon!(eraser), "Eraser"),
+                            (Tool::Pan, icon!(grab), "Pan"),
                         ]
-                        .map(|(tool, icon, _name)| {
-                            Button::new(icon.as_svg())
-                                .on_press(Message::SetTool(tool))
-                                .style(if tool == self.tool {
-                                    iced::widget::button::primary
-                                } else {
-                                    iced::widget::button::subtle
-                                })
-                                .into()
+                        .map(|(tool, icon, name)| {
+                            toolbar_tooltip(
+                                button(icon).on_press(Message::SetTool(tool)).style(
+                                    if tool == self.tool {
+                                        iced::widget::button::primary
+                                    } else {
+                                        iced::widget::button::subtle
+                                    },
+                                ),
+                                name,
+                            )
+                            .into()
                         }),
                     )
                     .spacing(4),
@@ -372,22 +378,30 @@ impl Editor {
                 Container::new(
                     Row::new()
                         .align_y(Vertical::Center)
-                        .push(
-                            Button::new(Icon::BiBorderInner.as_svg())
+                        .push(toolbar_tooltip(
+                            button(icon!(zoom.zero))
                                 .style(iced::widget::button::subtle)
                                 .on_press(Message::ResetViewport),
-                        )
-                        .push(
-                            Button::new(Icon::BiZoomIn.as_svg())
-                                .style(iced::widget::button::subtle)
-                                .on_press(Message::ZoomIn),
-                        )
-                        .push(text(format!("{:.0}%", self.scale * 100.0)))
-                        .push(
-                            Button::new(Icon::BiZoomOut.as_svg())
+                            "Reset viewport",
+                        ))
+                        .push(toolbar_tooltip(
+                            Button::new(icon!(zoom.out))
                                 .style(iced::widget::button::subtle)
                                 .on_press(Message::ZoomOut),
-                        )
+                            "Zoom out",
+                        ))
+                        .push(toolbar_tooltip(
+                            button(text(format!("{:.0}%", self.scale * 100.0)))
+                                .style(button::subtle)
+                                .on_press(Message::SetScale(DEFAULT_SCALE)),
+                            "Reset zoom",
+                        ))
+                        .push(toolbar_tooltip(
+                            Button::new(icon!(zoom.in))
+                                .style(iced::widget::button::subtle)
+                                .on_press(Message::ZoomIn),
+                            "Zoom in",
+                        ))
                         .spacing(4),
                 )
                 .align_right(Length::Fill),

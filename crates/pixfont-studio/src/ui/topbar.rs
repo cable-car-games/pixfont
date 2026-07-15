@@ -6,8 +6,7 @@ use iced::{
     widget::{Button, Column, Container, Row, Text},
 };
 use iced_aw::{DropDown, drop_down::Alignment};
-
-use crate::ui::widgets::icon::Icon;
+use pixicons::icon::icon;
 
 pub struct Topbar {
     pub view: View,
@@ -56,23 +55,23 @@ impl Topbar {
                 Container::new(
                     Row::new()
                         .push(
-                            Button::new(Icon::BiPlusLg.as_svg())
+                            Button::new(icon!(file.font.new))
                                 .style(iced::widget::button::subtle)
                                 .on_press(Message::NewFile),
                         )
                         .push(
-                            Button::new(Icon::BiFolder2Open.as_svg())
+                            Button::new(icon!(file))
                                 .style(iced::widget::button::subtle)
                                 .on_press(Message::OpenFile),
                         )
                         .push(
-                            Button::new(Icon::BiFloppy.as_svg())
+                            Button::new(icon!(save))
                                 .style(iced::widget::button::subtle)
                                 .on_press(Message::SaveFile),
                         )
                         .push(
                             DropDown::new(
-                                Button::new(Icon::BiFileArrowDown.as_svg())
+                                Button::new(icon!(file.export))
                                     .style(if self.export_shown {
                                         iced::widget::button::primary
                                     } else {
@@ -81,11 +80,15 @@ impl Topbar {
                                     .on_press(Message::OpenExportDropdown(None)),
                                 Container::new(Column::with_children(
                                     pixfont::export::EXPORTERS.iter().map(|exporter| {
-                                        Button::new(Text::new(format!("{}", exporter)))
-                                            .style(iced::widget::button::text)
-                                            .width(240)
-                                            .on_press(Message::ExportFile(*exporter))
-                                            .into()
+                                        Button::new(
+                                            Row::with_capacity(2)
+                                                .push(icon!(file.pentacom))
+                                                .push(Text::new(format!("{}", exporter))),
+                                        )
+                                        .style(iced::widget::button::text)
+                                        .width(240)
+                                        .on_press(Message::ExportFile(*exporter))
+                                        .into()
                                     }),
                                 ))
                                 .style(iced::widget::container::bordered_box),
@@ -117,7 +120,7 @@ impl Topbar {
                 Container::new(
                     Row::new()
                         .push(
-                            Button::new(Icon::BiGearWideConnected.as_svg())
+                            Button::new(icon!(settings))
                                 .style(button_style(View::Settings))
                                 .on_press(Message::ShowView(View::Settings)),
                         )
