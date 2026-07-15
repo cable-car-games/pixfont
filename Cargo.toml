@@ -3,9 +3,9 @@ resolver = "3"
 members = [
     "crates/pixfont",
     "crates/pixfont-studio",
-    "crates/pixicons", "crates/pixicons-macros",
+    "crates/pixicons",
+    "crates/pixicons-macros",
     "crates/ucd",
-    "crates/ucd-macros",
 ]
 
 [workspace.dependencies]
