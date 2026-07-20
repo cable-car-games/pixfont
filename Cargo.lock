@@ -3015,6 +3015,7 @@ dependencies = [
  "iced_aw",
  "iced_dialog",
  "image",
+ "indexmap",
  "itertools 0.15.0",
  "open",
  "pixfont",

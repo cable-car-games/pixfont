@@ -21,7 +21,7 @@ pub mod truetype;
 pub mod ufo;
 pub mod windows;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Exporter {
     Binary,
     Project,

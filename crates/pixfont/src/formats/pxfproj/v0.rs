@@ -92,12 +92,12 @@ impl From<crate::Metadata> for Metadata {
     ) -> Self {
         Self {
             name,
-            family,
-            weight,
-            style,
-            author,
-            copyright,
-            license,
+            family: Some(family),
+            weight: Some(weight),
+            style: Some(style),
+            author: Some(author),
+            copyright: Some(copyright),
+            license: Some(license),
             extra,
         }
     }
@@ -118,12 +118,12 @@ impl From<Metadata> for crate::Metadata {
     ) -> Self {
         Self {
             name,
-            family,
-            weight,
-            style,
-            author,
-            copyright,
-            license,
+            family: family.unwrap_or_default(),
+            weight: weight.unwrap_or_default(),
+            style: style.unwrap_or_default(),
+            author: author.unwrap_or_default(),
+            copyright: copyright.unwrap_or_default(),
+            license: license.unwrap_or_default(),
             extra,
         }
     }
@@ -184,6 +184,7 @@ impl From<Metrics> for crate::Metrics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum Mapping {
     Single(String),
     Multiple {
@@ -192,8 +193,8 @@ pub enum Mapping {
     },
 }
 
-impl From<crate::CodepointMapping> for Mapping {
-    fn from(crate::CodepointMapping { glyph, alternate }: crate::CodepointMapping) -> Self {
+impl From<crate::Mapping> for Mapping {
+    fn from(crate::Mapping { glyph, alternate }: crate::Mapping) -> Self {
         if alternate.is_empty() {
             Self::Single(glyph)
         } else {
@@ -202,7 +203,7 @@ impl From<crate::CodepointMapping> for Mapping {
     }
 }
 
-impl From<Mapping> for crate::CodepointMapping {
+impl From<Mapping> for crate::Mapping {
     fn from(mapping: Mapping) -> Self {
         match mapping {
             Mapping::Single(glyph) => Self {

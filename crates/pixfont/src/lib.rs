@@ -30,7 +30,7 @@ pub struct Font {
     pub alternates: IndexMap<String, String>,
 
     /// Unicode codepoint to character name mappings.
-    pub mappings: IndexMap<u32, CodepointMapping>,
+    pub mappings: IndexMap<u32, Mapping>,
 
     /// Glpyhs.
     pub glyphs: IndexMap<String, Glyph>,
@@ -39,7 +39,7 @@ pub struct Font {
 impl Font {
     pub fn add_glyph_and_mapping(&mut self, codepoint: u32, name: &str, glyph: Glyph) -> &mut Self {
         self.glyphs.insert(name.to_string(), glyph);
-        self.mappings.insert(codepoint, CodepointMapping::new(name));
+        self.mappings.insert(codepoint, Mapping::new(name));
         self
     }
 
@@ -56,8 +56,7 @@ impl Font {
         glyph_mappings: impl Iterator<Item = (String, u32, Glyph)>,
     ) -> &mut Self {
         for (name, codepoint, glyph) in glyph_mappings {
-            self.mappings
-                .insert(codepoint, CodepointMapping::new(&name));
+            self.mappings.insert(codepoint, Mapping::new(&name));
             self.glyphs.insert(name, glyph);
         }
 
@@ -66,10 +65,15 @@ impl Font {
 
     pub fn add_codepoints(&mut self, codepoints: impl Iterator<Item = u32>) -> &mut Self {
         self.add_glyphs_and_mappings(codepoints.map(|codepoint| {
+            let name = AGLFN::glyph_name(codepoint);
+
             (
-                AGLFN::glyph_name(codepoint).into(),
+                name.to_string(),
                 codepoint,
-                Glyph::default(),
+                Glyph {
+                    name: name.to_string(),
+                    ..Default::default()
+                },
             )
         }))
     }
@@ -97,12 +101,12 @@ impl Font {
 #[derive(Debug, Clone, Default)]
 pub struct Metadata {
     pub name: String,
-    pub family: Option<String>,
-    pub weight: Option<String>,
-    pub style: Option<String>,
-    pub author: Option<String>,
-    pub copyright: Option<String>,
-    pub license: Option<String>,
+    pub family: String,
+    pub weight: String,
+    pub style: String,
+    pub author: String,
+    pub copyright: String,
+    pub license: String,
     pub extra: IndexMap<String, String>,
 }
 
@@ -148,7 +152,7 @@ impl Metrics {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct CodepointMapping {
+pub struct Mapping {
     /// Default glyph for this mapping.
     pub glyph: String,
 
@@ -156,7 +160,7 @@ pub struct CodepointMapping {
     pub alternate: IndexMap<String, String>,
 }
 
-impl CodepointMapping {
+impl Mapping {
     pub fn new(glyph: &str) -> Self {
         Self {
             glyph: glyph.into(),

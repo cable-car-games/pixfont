@@ -14,8 +14,8 @@ pub fn export(font: &Font, writer: &mut impl Write) -> Result<(), ExportError> {
         name: font.metadata.name.as_str(),
     };
 
-    if let Some(author) = &font.metadata.author {
-        json["copy"] = author.as_str().into();
+    if !font.metadata.author.is_empty() {
+        json["copy"] = font.metadata.author.as_str().into();
     }
 
     if let Some(mono_advance) = font.metrics.mono_advance {

@@ -272,11 +272,11 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
         let state = tree.state.downcast_ref::<State>();
 
         let bounds = layout.bounds();
-        let offset = self.offset
-            + match &state.pointer {
-                ToolState::Pan { delta, .. } => *delta,
-                _ => Vector::ZERO,
-            };
+        let tmp_offset = match &state.pointer {
+            ToolState::Pan { delta, .. } => *delta,
+            _ => Vector::ZERO,
+        };
+        let offset = self.offset + tmp_offset;
 
         Draw::with(bounds, renderer, |draw| {
             draw.renderer.fill_quad(
@@ -296,7 +296,10 @@ impl<Message, Theme, Renderer: renderer::Renderer> Widget<Message, Theme, Render
                 .chain(delta.add.iter())
                 .filter(|item| !delta.remove.contains(*item))
             {
-                if let Some(origin) = self.to_iced_rect(Some(*pixel), &bounds) {
+                if let Some(mut origin) = self.to_iced_rect(Some(*pixel), &bounds) {
+                    origin.x += tmp_offset.x;
+                    origin.y += tmp_offset.y;
+
                     draw.renderer.fill_quad(
                         Quad {
                             bounds: origin,

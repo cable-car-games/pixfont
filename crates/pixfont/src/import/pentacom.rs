@@ -7,8 +7,8 @@ use glifnames::{AGLFN, GlyphName};
 use json::JsonValue::{self};
 
 use crate::{
-    CodepointMapping, Font, Glyph, Guideline, Guidelines, Metrics, Pixels, Point,
-    formats::pentacom::*, import::ImportError,
+    Font, Glyph, Guideline, Guidelines, Mapping, Metrics, Pixels, Point, formats::pentacom::*,
+    import::ImportError,
 };
 
 pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
@@ -49,17 +49,17 @@ pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
             "name" => {
                 font.metadata.name = match value.as_str() {
                     Some(name) => name.to_string(),
-                    None => String::new(),
+                    None => continue,
                 };
             }
 
             // BitFontMaker2 calls this "AuthorName" in the UI.
             "copy" => {
                 font.metadata.author = match value.as_str() {
-                    Some(author) => Some(author.to_string()),
+                    Some(author) => author.to_string(),
                     None => {
                         println!("failed to read 'copy' value as string");
-                        None
+                        continue;
                     }
                 };
             }
@@ -102,7 +102,7 @@ pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
                     println!("{key} not handled");
                 }
             }
-        };
+        }
     }
 
     if monospace_flag && monospace_width > 0 {
@@ -119,7 +119,7 @@ pub fn import(read: &mut impl std::io::Read) -> Result<Font, ImportError> {
         const SPACE: u32 = ' ' as u32;
         let space_glyph_name = glifnames::AGLFN::glyph_name(SPACE);
 
-        let mapping = font.mappings.entry(' ' as u32).or_insert(CodepointMapping {
+        let mapping = font.mappings.entry(' ' as u32).or_insert(Mapping {
             glyph: space_glyph_name.into(),
             alternate: Default::default(),
         });

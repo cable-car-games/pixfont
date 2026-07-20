@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
-use std::{ffi::OsStr, path::PathBuf};
+use std::ffi::OsStr;
 
 use iced::{Element, Pixels, Settings, Task, Theme, widget::Column, window};
-use rfd::AsyncFileDialog;
 
+use crate::{project::Project, ui::pages::Page};
+
+mod project;
 mod settings;
 mod ui;
 
@@ -32,33 +34,38 @@ struct Application {
     settings: crate::settings::Settings,
     system_theme: iced::theme::Mode,
 
-    pages: PagesState,
+    project: Project,
 
-    dirty: bool,
-    project_path: Option<PathBuf>,
-    project: pixfont::Font,
-
-    selected_glyph: Option<String>,
+    topbar: ui::topbar::State,
+    page: Page,
+    pages: PageState,
 }
 
-struct PagesState {
-    topbar: ui::topbar::Topbar,
-    directory: ui::view::directory::Directory,
-    editor: ui::view::editor::Editor,
-    settings: ui::view::settings::Settings,
+struct PageState {
+    editor: ui::pages::editor::Editor,
+    settings: ui::pages::settings::Settings,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
     None,
-    OpenProject(Option<PathBuf>, Box<pixfont::Font>),
+
+    Edit(project::Action),
+    EditCallback(project::Response),
+
+    ShowPage(Page),
 
     Topbar(ui::topbar::Message),
-    Directory(ui::view::directory::Message),
-    Editor(ui::view::editor::Message),
-    Settings(ui::view::settings::Message),
+    Editor(ui::pages::editor::Message),
+    Settings(ui::pages::settings::Message),
 
     SetThemeMode(iced::theme::Mode),
+}
+
+impl From<project::Action> for Message {
+    fn from(action: project::Action) -> Self {
+        Self::Edit(action)
+    }
 }
 
 impl Application {
@@ -68,17 +75,13 @@ impl Application {
                 // TODO: load settings
                 settings: settings::Settings::load().expect("Failed to load settings"),
                 system_theme: Default::default(),
-
-                pages: PagesState {
-                    topbar: Default::default(),
-                    directory: Default::default(),
+                project: Default::default(),
+                topbar: Default::default(),
+                page: Page::Edit,
+                pages: PageState {
                     editor: Default::default(),
                     settings: Default::default(),
                 },
-                dirty: false,
-                project_path: None,
-                project: Default::default(),
-                selected_glyph: None,
             },
             iced::system::theme().map(Message::SetThemeMode),
         )
@@ -86,19 +89,10 @@ impl Application {
 
     fn view(&self) -> Element<'_, Message> {
         Column::new()
-            .push(self.pages.topbar.view().map(Message::Topbar))
-            .push(match self.pages.topbar.view {
-                ui::topbar::View::Glyphs => self
-                    .pages
-                    .directory
-                    .view(&self.project, &self.selected_glyph)
-                    .map(Message::Directory),
-                ui::topbar::View::Edit => self
-                    .pages
-                    .editor
-                    .view(&self.settings, &self.project, self.selected_glyph.as_ref())
-                    .map(Message::Editor),
-                ui::topbar::View::Settings => self
+            .push(self.topbar.view(self.page))
+            .push(match self.page {
+                Page::Edit => self.pages.editor.view(&self.settings, &self.project.font),
+                Page::Settings => self
                     .pages
                     .settings
                     .view(&self.settings)
@@ -110,7 +104,7 @@ impl Application {
     }
 
     fn title(&self) -> String {
-        let project_name = match &self.project_path {
+        let project_name = match &self.project.path {
             Some(path) => &path
                 .file_name()
                 .map(OsStr::to_string_lossy)
@@ -119,7 +113,7 @@ impl Application {
             None => "New Project",
         };
 
-        let dirty_mark = if self.dirty { "*" } else { "" };
+        let dirty_mark = if self.project.is_dirty() { "*" } else { "" };
         format!("{}{} - {}", dirty_mark, project_name, "PixFont Studio")
     }
 
@@ -138,180 +132,22 @@ impl Application {
         match message {
             Message::None => Task::none(),
 
-            Message::OpenProject(path, font) => {
-                self.dirty = false;
-                self.project = *font;
-                self.project_path = path;
-                self.selected_glyph = None;
+            Message::Edit(action) => self.update_project(action),
 
+            Message::EditCallback(response) => match response {
+                project::Response::Changed => todo!(),
+            },
+
+            Message::ShowPage(page) => {
+                self.page = page;
                 Task::none()
             }
 
-            Message::Topbar(message) => match message {
-                ui::topbar::Message::NewFile => {
-                    // TODO: prompt user to confirm if file is dirty
+            Message::Topbar(message) => self.topbar.update(&self.project, message),
 
-                    self.dirty = false;
-                    self.project = pixfont::Font::default();
-                    self.selected_glyph = None;
-
-                    Task::none()
-                }
-                ui::topbar::Message::OpenFile => Task::future(async {
-                    let dialog = AsyncFileDialog::new();
-                    let Some(file) = dialog.pick_file().await else {
-                        return Message::None;
-                    };
-
-                    let font = match pixfont::import::import_from_file(file.path()) {
-                        Ok(font) => font,
-                        Err(error) => {
-                            println!("failed to load file: {}", error);
-                            return Message::None;
-                        }
-                    };
-
-                    Message::OpenProject(Some(file.path().to_owned()), Box::new(font))
-                }),
-                ui::topbar::Message::SaveFile => {
-                    let font = self.project.clone();
-                    Task::future(async move {
-                        let dialog = AsyncFileDialog::new();
-                        let Some(file) = dialog.save_file().await else {
-                            return Message::None;
-                        };
-
-                        match pixfont::export::export_to_file(
-                            &font,
-                            pixfont::export::Exporter::Project,
-                            file.path(),
-                        ) {
-                            Ok(_) => {}
-                            Err(error) => {
-                                println!("failed to save project: {}", error);
-                            }
-                        }
-                        Message::None
-                    })
-                }
-                ui::topbar::Message::ExportFile(exporter) => {
-                    let font = self.project.clone();
-                    Task::future(async move {
-                        let close_msg =
-                            Message::Topbar(ui::topbar::Message::OpenExportDropdown(Some(false)));
-
-                        let dialog = AsyncFileDialog::new();
-                        let Some(file) = dialog.save_file().await else {
-                            return close_msg;
-                        };
-
-                        match pixfont::export::export_to_file(&font, exporter, file.path()) {
-                            Ok(_) => {}
-                            Err(error) => {
-                                println!("failed to export file: {}", error);
-                            }
-                        };
-                        close_msg
-                    })
-                }
-                ui::topbar::Message::ShowView(view) => {
-                    self.pages.topbar.view = view;
-                    Task::none()
-                }
-                ui::topbar::Message::OpenExportDropdown(visible) => {
-                    self.pages.topbar.export_shown =
-                        visible.unwrap_or(!self.pages.topbar.export_shown);
-                    Task::none()
-                }
-            },
-            Message::Directory(message) => match message {
-                ui::view::directory::Message::SelectGlyph(glyph_name) => {
-                    self.selected_glyph = Some(glyph_name);
-                    Task::none()
-                }
-
-                ui::view::directory::Message::AddGlyphsFromSet(set) => {
-                    self.project
-                        .add_codepoints(set.codepoints().iter().copied());
-                    self.pages
-                        .directory
-                        .update(ui::view::directory::Message::SetDropdown(Some(false)))
-                        .map(Message::Directory)
-                }
-
-                ui::view::directory::Message::SubmitBlock(block) => {
-                    self.project.add_codepoints(block.range.iter());
-                    self.pages
-                        .directory
-                        .update(ui::view::directory::Message::SubmitBlock(block))
-                        .map(Message::Directory)
-                }
-
-                // metadata update messages
-                ui::view::directory::Message::SetName(name) => {
-                    self.project.metadata.name = name;
-                    Task::none()
-                }
-                ui::view::directory::Message::SetFamily(family) => {
-                    self.project.metadata.family = family;
-                    Task::none()
-                }
-                ui::view::directory::Message::SetWeight(weight) => {
-                    self.project.metadata.weight = weight;
-                    Task::none()
-                }
-                ui::view::directory::Message::SetStyle(style) => {
-                    self.project.metadata.style = style;
-                    Task::none()
-                }
-                ui::view::directory::Message::SetAuthor(author) => {
-                    self.project.metadata.author = author;
-                    Task::none()
-                }
-                ui::view::directory::Message::SetCopyright(copyright) => {
-                    self.project.metadata.copyright = copyright;
-                    Task::none()
-                }
-                ui::view::directory::Message::SetLicense(license) => {
-                    self.project.metadata.license = license;
-                    Task::none()
-                }
-                ui::view::directory::Message::AddNewExtra => {
-                    self.project
-                        .metadata
-                        .extra
-                        .insert("".to_owned(), "".to_owned());
-                    Task::none()
-                }
-                ui::view::directory::Message::SetExtraKey(old, new) => {
-                    // TODO: proper error handling
-                    //       if the keys in this event are missing, it's likely a bug in some other code
-                    self.project
-                        .metadata
-                        .extra
-                        .replace_index(self.project.metadata.extra.get_index_of(&old).unwrap(), new)
-                        .unwrap();
-
-                    Task::none()
-                }
-                ui::view::directory::Message::SetExtraValue(key, value) => {
-                    self.project.metadata.extra.insert(key, value);
-                    Task::none()
-                }
-                ui::view::directory::Message::RemoveExtra(key) => {
-                    self.project.metadata.extra.shift_remove(&key);
-                    Task::none()
-                }
-
-                _ => self.pages.directory.update(message).map(Message::Directory),
-            },
-            Message::Editor(message) => self
-                .pages
-                .editor
-                .update(message, &mut self.project, self.selected_glyph.as_ref())
-                .map(Message::Editor),
+            Message::Editor(message) => self.pages.editor.update(message, &mut self.project.font),
             Message::Settings(message) => match message {
-                ui::view::settings::Message::Private(message) => self
+                ui::pages::settings::Message::Private(message) => self
                     .pages
                     .settings
                     .update(&mut self.settings, message)
@@ -323,5 +159,17 @@ impl Application {
                 Task::none()
             }
         }
+    }
+
+    fn update_project(&mut self, action: project::Action) -> Task<Message> {
+        let response = match self.project.update(action) {
+            Ok(response) => response,
+            Err(error) => {
+                eprintln!("failed to update project: {error:#?}");
+                return Task::none();
+            }
+        };
+
+        response.map(Message::EditCallback)
     }
 }
