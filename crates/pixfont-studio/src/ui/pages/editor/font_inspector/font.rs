@@ -57,7 +57,7 @@ impl State {
                                     .on_input(set_metadata_fn(SetMetadata::SetLicense)),
                             )),
                     )
-                    .push(inspector::extra_section(font, extra_msg))
+                    .push(inspector::extra_section(&font.metadata.extra, extra_msg))
                     .padding(8)
                     .spacing(12),
             )

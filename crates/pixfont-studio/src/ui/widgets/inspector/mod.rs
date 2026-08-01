@@ -5,6 +5,7 @@ use iced::{
     Element, Font, Length, alignment,
     widget::{Column, Container, Row, Text, button, text, text_input},
 };
+use indexmap::IndexMap;
 
 use crate::project::Extra;
 
@@ -35,12 +36,12 @@ pub fn property<'state, M: 'state>(
 }
 
 pub fn extra_section<'state>(
-    font: &'state pixfont::Font,
+    extra: &'state IndexMap<String, String>,
     map_extra: impl Fn(Extra) -> crate::Message + Clone + 'state,
 ) -> Element<'state, crate::Message> {
     let mut section = section("Extra");
 
-    for (key, value) in &font.metadata.extra {
+    for (key, value) in extra {
         let set_key = map_extra.clone();
         let set_key = move |s| {
             set_key(Extra::RenameKey {

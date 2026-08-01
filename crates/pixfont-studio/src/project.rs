@@ -6,7 +6,7 @@ use std::{fs::File, path::PathBuf};
 use iced::Task;
 use indexmap::IndexMap;
 use pixfont::{
-    Font,
+    Font, Guideline, Guidelines,
     export::{ExportError, Exporter},
     import::{ImportError, Importer},
     sets::GlyphSet,
@@ -39,6 +39,7 @@ pub enum Action {
 #[allow(unused)]
 #[derive(Debug, Clone)]
 pub enum Response {
+    Reset,
     Changed,
 }
 
@@ -70,27 +71,18 @@ pub enum SetMetrics {
     SetCapHeight(i32),
     SetXHeight(i32),
     SetMonoAdvance(Option<u32>),
-
-    InsertGuideline {
-        name: String,
-        value: i32,
-    },
-    SetGuideline {
-        direction: Direction,
-        index: usize,
-        action: GuidelineAction,
-    },
+    Guideline(Direction, GuidelineAction),
 }
 
-#[allow(unused)]
 #[derive(Debug, Clone)]
 pub enum GuidelineAction {
-    Remove,
-    SetName(String),
-    SetPosition(i32),
+    Create { name: String, position: i32 },
+    SetName { index: usize, name: String },
+    SetPosition { index: usize, position: i32 },
+    SetDirection { index: usize, direction: Direction },
+    Remove { index: usize },
 }
 
-#[allow(unused)]
 #[derive(Debug, Clone, Copy)]
 pub enum Direction {
     X,
@@ -103,7 +95,7 @@ pub enum GlyphAction {
     Rename(String),
     SetMapping(Mapping),
     SetAdvance(u32),
-
+    Guideline(Direction, GuidelineAction),
     Extra(Extra),
 }
 
@@ -175,7 +167,7 @@ impl Project {
         Ok(match message {
             Action::New => {
                 *self = Default::default();
-                Task::none()
+                Task::done(Response::Reset)
             }
 
             Action::Import(path) => {
@@ -187,7 +179,7 @@ impl Project {
                     path: Some(path),
                     dirty: false,
                 };
-                Task::none()
+                Task::done(Response::Reset)
             }
 
             Action::ExportPath => {
@@ -238,15 +230,13 @@ impl Project {
                     SetMetrics::SetCapHeight(cap_height) => m.cap_height = cap_height,
                     SetMetrics::SetXHeight(x_height) => m.x_height = x_height,
                     SetMetrics::SetMonoAdvance(mono_advance) => m.mono_advance = mono_advance,
-                    SetMetrics::InsertGuideline { name: _, value: _ } => todo!(),
-                    SetMetrics::SetGuideline {
-                        direction: _,
-                        index: _,
-                        action: _,
-                    } => todo!(),
+                    SetMetrics::Guideline(direction, action) => {
+                        Self::update_guideline(&mut m.guidelines, direction, action)
+                    }
                 }
                 Task::none()
             }
+
             Action::Glyph { name, action } => {
                 let Some(glyph) = font.glyphs.get_mut(&name) else {
                     return Err(Error::GlyphMissing);
@@ -257,6 +247,9 @@ impl Project {
                     GlyphAction::SetMapping(_mapping) => todo!(),
                     GlyphAction::SetAdvance(advance) => glyph.advance = advance,
                     GlyphAction::Extra(action) => Self::update_extra(&mut glyph.extra, action),
+                    GlyphAction::Guideline(direction, action) => {
+                        Self::update_guideline(&mut glyph.guidelines, direction, action)
+                    }
                 }
 
                 Task::none()
@@ -279,18 +272,55 @@ impl Project {
         })
     }
 
+    fn update_guideline(
+        guidelines: &mut Guidelines,
+        direction: Direction,
+        action: GuidelineAction,
+    ) {
+        let guidelines = match direction {
+            Direction::X => &mut guidelines.x,
+            Direction::Y => &mut guidelines.y,
+        };
+
+        match action {
+            GuidelineAction::Create { name, position } => {
+                guidelines.push(Guideline { name, position })
+            }
+
+            GuidelineAction::SetName { index, name } => {
+                guidelines[index].name = name;
+            }
+
+            GuidelineAction::SetPosition { index, position } => {
+                guidelines[index].position = position;
+            }
+
+            GuidelineAction::Remove { index } => {
+                guidelines.remove(index);
+            }
+
+            GuidelineAction::SetDirection {
+                index: _,
+                direction: _,
+            } => todo!(),
+        }
+    }
+
     fn update_extra(map: &mut IndexMap<String, String>, action: Extra) {
         match action {
             Extra::Add { key, value } => {
                 map.insert(key, value);
             }
+
             Extra::RenameKey { old, new } => {
                 let index = map.get_index_of(&old).unwrap();
                 map.replace_index(index, new).unwrap();
             }
+
             Extra::SetValue { key, value } => {
                 map.insert(key, value);
             }
+
             Extra::Remove { key } => {
                 map.shift_remove(&key);
             }

@@ -108,11 +108,23 @@ impl State {
                         ))
                         .spacing(4),
                 )
-                .push(
-                    scrollable(container(self.view_glyphs(font, selected_glyph)))
-                        .anchor_top()
-                        .height(Length::Fill),
-                )
+                .push(if font.glyphs.is_empty() {
+                    container(
+                        Column::new()
+                            .push("You don't have any glyphs in this font.")
+                            .push(button("Add alphanumeric glyphs").on_press(
+                                project::Action::AddGlyphSet(GlyphSet::Alphanumeric).into(),
+                            ))
+                            .spacing(8),
+                    )
+                    .center(Length::Fill)
+                } else {
+                    container(
+                        scrollable(container(self.view_glyphs(font, selected_glyph)))
+                            .anchor_top()
+                            .height(Length::Fill),
+                    )
+                })
                 .spacing(4),
         )
         .padding(4)

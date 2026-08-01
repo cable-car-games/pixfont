@@ -135,6 +135,10 @@ impl Application {
             Message::Edit(action) => self.update_project(action),
 
             Message::EditCallback(response) => match response {
+                project::Response::Reset => {
+                    self.pages.editor = Default::default();
+                    Task::none()
+                }
                 project::Response::Changed => todo!(),
             },
 

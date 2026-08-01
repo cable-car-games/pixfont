@@ -169,7 +169,7 @@ impl Mapping {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Glyph {
     pub name: String,
 
@@ -183,6 +183,18 @@ pub struct Glyph {
 
     /// Additional information for exporters.
     pub extra: IndexMap<String, String>,
+}
+
+impl Default for Glyph {
+    fn default() -> Self {
+        Self {
+            name: Default::default(),
+            pixels: Default::default(),
+            advance: 8,
+            guidelines: Default::default(),
+            extra: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
