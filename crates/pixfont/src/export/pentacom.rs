@@ -27,7 +27,9 @@ pub fn export(font: &Font, writer: &mut impl Write) -> Result<(), ExportError> {
         let glyph = font
             .glyphs
             .get(&mapping.glyph)
-            .expect("glyph doesn't exist");
+            .ok_or_else(|| Error::GlyphNotFound {
+                name: mapping.glyph.clone(),
+            })?;
         json["wordspacing"] = glyph.advance.into();
     }
 
