@@ -63,7 +63,7 @@ impl State {
                                 ))
                                 .push(inspector::property(
                                     "Ascender",
-                                    number_input(&font.metrics.ascender, 1..i32::MAX, |value| {
+                                    number_input(&font.metrics.ascender, 1..=i32::MAX, |value| {
                                         project::Action::Metrics(project::SetMetrics::SetAscender(
                                             value,
                                         ))
@@ -73,7 +73,7 @@ impl State {
                                 ))
                                 .push(inspector::property(
                                     "Descender",
-                                    number_input(&font.metrics.descender, i32::MIN..0, |value| {
+                                    number_input(&font.metrics.descender, i32::MIN..=0, |value| {
                                         project::Action::Metrics(project::SetMetrics::SetDescender(
                                             value,
                                         ))
