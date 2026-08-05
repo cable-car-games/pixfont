@@ -8,7 +8,8 @@ use crate::{Font, formats::pxfproj::v0};
 
 pub fn export(font: &Font, write: &mut impl Write) -> Result<(), ExportError> {
     let file = v0::File::from(font.clone());
-    let toml = toml::to_string_pretty(&file).unwrap();
+    let toml =
+        toml::to_string_pretty(&file).map_err(|err| ExportError::Message(err.to_string()))?;
 
     write.write_all(toml.as_bytes())?;
     Ok(())

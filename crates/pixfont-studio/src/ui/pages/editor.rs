@@ -185,33 +185,32 @@ impl Editor {
             .spacing(2);
 
         let editor: Container<'_, crate::Message> = if let Some(glyph) = &self.glyph_name {
-            let glyph = font
-                .glyphs
-                .get(glyph)
-                .expect("bug: glyph name selected, but no such glyph");
-
-            Container::new(
-                Column::new()
-                    .push(toolbar)
-                    .push(
-                        GlyphEditor::new(glyph, &font.metrics)
-                            .scale(self.scale)
-                            .offset(self.offset)
-                            .guidelines(font.metrics.guidelines.clone())
-                            .guidelines(glyph.guidelines.clone())
-                            .tool(self.tool)
-                            .colors(settings.appearance.editor)
-                            .on_scale(|value| Message::SetScale(value).into())
-                            .on_pan(|value| Message::SetOffset(value).into())
-                            .on_tool(|value| Message::SetTool(value).into())
-                            .on_apply(|value| Message::Apply(value).into()),
-                    )
-                    .spacing(4),
-            )
-            .style(iced::widget::container::bordered_box)
-            .padding(4)
+            if let Some(glyph) = font.glyphs.get(glyph) {
+                Container::new(
+                    Column::new()
+                        .push(toolbar)
+                        .push(
+                            GlyphEditor::new(glyph, &font.metrics)
+                                .scale(self.scale)
+                                .offset(self.offset)
+                                .guidelines(font.metrics.guidelines.clone())
+                                .guidelines(glyph.guidelines.clone())
+                                .tool(self.tool)
+                                .colors(settings.appearance.editor)
+                                .on_scale(|value| Message::SetScale(value).into())
+                                .on_pan(|value| Message::SetOffset(value).into())
+                                .on_tool(|value| Message::SetTool(value).into())
+                                .on_apply(|value| Message::Apply(value).into()),
+                        )
+                        .spacing(4),
+                )
+                .style(iced::widget::container::bordered_box)
+                .padding(4)
+            } else {
+                no_glyph()
+            }
         } else {
-            container("no glyph").center(Length::Fill)
+            no_glyph()
         };
 
         Row::new()
@@ -333,4 +332,10 @@ fn apply(glyph: &mut Glyph, delta: &Delta) {
     delta.remove.iter().for_each(|pixel| {
         glyph.pixels.set(*pixel, false);
     });
+}
+
+fn no_glyph<'a, M>() -> Container<'a, M> {
+    container("no glyph")
+        .center(Length::Fill)
+        .style(container::bordered_box)
 }
