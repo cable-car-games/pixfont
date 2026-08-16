@@ -13,6 +13,7 @@ use rfd::AsyncFileDialog;
 use crate::{
     Message as AMessage, Page,
     project::{self, Project},
+    ui::widgets::tooltip::toolbar_tooltip,
 };
 
 #[derive(Default)]
@@ -44,35 +45,42 @@ impl State {
             .push(
                 Container::new(
                     Row::new()
-                        .push(
+                        .push(toolbar_tooltip(
                             Button::new(icon!(file.font.new))
                                 .style(iced::widget::button::subtle)
                                 .on_press(project::Action::New.into()),
-                        )
-                        .push(
+                            "New font",
+                        ))
+                        .push(toolbar_tooltip(
                             Button::new(icon!(file))
                                 .style(iced::widget::button::subtle)
                                 .on_press(AMessage::Topbar(Message::Open)),
-                        )
-                        .push(
+                            "Open",
+                        ))
+                        .push(toolbar_tooltip(
                             Button::new(icon!(save))
                                 .style(iced::widget::button::subtle)
                                 .on_press(AMessage::Topbar(Message::Save)),
-                        )
-                        .push(
+                            "Save",
+                        ))
+                        .push(toolbar_tooltip(
                             Button::new(icon!(save.new))
                                 .style(iced::widget::button::subtle)
                                 .on_press(AMessage::Topbar(Message::SaveAs)),
-                        )
+                            "Save as...",
+                        ))
                         .push(
                             DropDown::new(
-                                Button::new(icon!(file.export))
-                                    .style(if self.export_shown {
-                                        iced::widget::button::primary
-                                    } else {
-                                        iced::widget::button::subtle
-                                    })
-                                    .on_press(AMessage::Topbar(Message::ToggleDropdown)),
+                                toolbar_tooltip(
+                                    Button::new(icon!(file.export))
+                                        .style(if self.export_shown {
+                                            iced::widget::button::primary
+                                        } else {
+                                            iced::widget::button::subtle
+                                        })
+                                        .on_press(AMessage::Topbar(Message::ToggleDropdown)),
+                                    "Export",
+                                ),
                                 Container::new(Column::with_children(
                                     pixfont::export::EXPORTERS.iter().map(|exporter| {
                                         Button::new(
@@ -104,21 +112,17 @@ impl State {
                             .style(button_style(Page::Edit))
                             .on_press(AMessage::ShowPage(Page::Edit)),
                     )
-                    //.push(
-                    //    button("Preview")
-                    //        .style(button_style(Page::Edit))
-                    //        .on_press(AMessage::ShowPage(Page::Edit)),
-                    //)
                     .spacing(4),
             )
             .push(
                 Container::new(
                     Row::new()
-                        .push(
+                        .push(toolbar_tooltip(
                             Button::new(icon!(settings))
                                 .style(button_style(Page::Settings))
                                 .on_press(AMessage::ShowPage(Page::Settings)),
-                        )
+                            "Settings",
+                        ))
                         .spacing(4),
                 )
                 .align_right(Length::Fill),
