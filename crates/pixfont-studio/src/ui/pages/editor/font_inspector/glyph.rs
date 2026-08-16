@@ -238,6 +238,13 @@ fn guidelines<'a>(
                             Direction::X => "X",
                             Direction::Y => "Y",
                         })
+                        .on_press(message(GuidelineAction::SetDirection {
+                            index,
+                            direction: match direction {
+                                Direction::X => Direction::Y,
+                                Direction::Y => Direction::X,
+                            },
+                        }))
                         .style(button::background),
                     )
                     .push(

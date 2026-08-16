@@ -277,32 +277,36 @@ impl Project {
         direction: Direction,
         action: GuidelineAction,
     ) {
-        let guidelines = match direction {
+        let direction_guidelines = match direction {
             Direction::X => &mut guidelines.x,
             Direction::Y => &mut guidelines.y,
         };
 
         match action {
             GuidelineAction::Create { name, position } => {
-                guidelines.push(Guideline { name, position })
+                direction_guidelines.push(Guideline { name, position })
             }
 
             GuidelineAction::SetName { index, name } => {
-                guidelines[index].name = name;
+                direction_guidelines[index].name = name;
             }
 
             GuidelineAction::SetPosition { index, position } => {
-                guidelines[index].position = position;
+                direction_guidelines[index].position = position;
             }
 
             GuidelineAction::Remove { index } => {
-                guidelines.remove(index);
+                direction_guidelines.remove(index);
             }
 
-            GuidelineAction::SetDirection {
-                index: _,
-                direction: _,
-            } => todo!(),
+            GuidelineAction::SetDirection { index, direction } => {
+                let guideline = direction_guidelines.remove(index);
+                match direction {
+                    Direction::X => &mut guidelines.x,
+                    Direction::Y => &mut guidelines.y,
+                }
+                .push(guideline);
+            }
         }
     }
 
