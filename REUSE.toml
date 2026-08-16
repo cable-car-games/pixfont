@@ -48,9 +48,9 @@ SPDX-FileCopyrightText = "2026 Rareș Nistor"
 # embedded assets
 #
 
-# RazzaSans (Nunito Sans) in PixFont Studio
+# Razza Sans (Nunito Sans) in PixFont Studio
 [[annotations]]
-path = ["crates/pixfont-studio/src/ui/font/RazzaSans/**/*"]
+path = ["crates/pixfont-studio/src/ui/font/razza/**/*"]
 SPDX-License-Identifier = "OFL-1.1"
 SPDX-FileCopyrightText = "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
 

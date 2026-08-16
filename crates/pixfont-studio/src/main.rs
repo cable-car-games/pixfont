@@ -20,7 +20,14 @@ fn main() -> iced::Result {
         .title(Application::title)
         .theme(Application::theme)
         .settings(Settings {
+            default_font: ui::font::razza::REGULAR,
             default_text_size: Pixels::from(13.0),
+            fonts: vec![
+                ui::font::razza::REGULAR_BYTES.into(),
+                ui::font::razza::ITALIC_BYTES.into(),
+                ui::font::razza::BOLD_BYTES.into(),
+                ui::font::razza::BOLD_ITALIC_BYTES.into(),
+            ],
             ..Default::default()
         })
         .window(window::Settings {

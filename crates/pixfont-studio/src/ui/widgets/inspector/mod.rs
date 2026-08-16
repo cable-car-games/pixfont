@@ -2,12 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
 use iced::{
-    Element, Font, Length, alignment,
+    Element, Length, alignment,
     widget::{Column, Container, Row, Text, button, text, text_input},
 };
 use indexmap::IndexMap;
 
-use crate::project::Extra;
+use crate::{project::Extra, ui::font::razza};
 
 pub const LABEL_WIDTH: u32 = 120;
 
@@ -16,11 +16,7 @@ pub fn section<'state, M: 'state>(title: impl text::IntoFragment<'state>) -> Col
 }
 
 pub fn header<'state, M: 'state>(title: impl text::IntoFragment<'state>) -> Element<'state, M> {
-    Container::new(Text::new(title).font(Font {
-        weight: iced::font::Weight::Bold,
-        ..Default::default()
-    }))
-    .into()
+    Container::new(Text::new(title).font(razza::BOLD)).into()
 }
 
 pub fn property<'state, M: 'state>(

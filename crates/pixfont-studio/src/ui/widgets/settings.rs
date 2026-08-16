@@ -2,12 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Rareș Nistor
 
 use iced::{
-    Element, Font, Length,
+    Element, Length,
     alignment::Vertical,
     padding,
     widget::{Button, Column, Row, Text, container, space, text::IntoFragment},
 };
 use pixicons::icon::Icon;
+
+use crate::ui::font::razza;
 
 pub fn wrapper<'state, Message: 'state>(
     content: impl Into<Element<'state, Message>>,
@@ -27,10 +29,7 @@ pub fn inset<'state, Message: 'state>(
 }
 
 pub fn title<'a>(label: &'a str) -> Text<'a> {
-    Text::new(label).size(24).font(Font {
-        weight: iced::font::Weight::Bold,
-        ..Default::default()
-    })
+    Text::new(label).size(24).font(razza::BOLD)
 }
 
 pub fn section<'a, M: 'a>(title: impl IntoFragment<'a>) -> Column<'a, M> {
@@ -40,10 +39,7 @@ pub fn section<'a, M: 'a>(title: impl IntoFragment<'a>) -> Column<'a, M> {
 }
 
 pub fn section_title<'a>(label: impl IntoFragment<'a>) -> Text<'a> {
-    Text::new(label).size(16).font(Font {
-        weight: iced::font::Weight::Bold,
-        ..Default::default()
-    })
+    Text::new(label).size(16).font(razza::BOLD)
 }
 
 pub fn button<'state, Message: 'state>(
